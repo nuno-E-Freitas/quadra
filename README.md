@@ -8,14 +8,23 @@ a link and they see where they go and where the ball goes, in order.
 
 ```bash
 pnpm install
-pnpm db:up        # Postgres 17 in Docker, host port 5434
-pnpm db:migrate   # apply db/migrations
-pnpm db:seed      # optional: demo@quadra.local / quadra-demo, plus one worked play
+cp .env.example .env   # then set DATABASE_URL
+pnpm db:migrate        # apply db/migrations
+pnpm db:seed           # optional: demo@quadra.local / quadra-demo, plus one worked play
 pnpm dev
 ```
 
-`.env` holds `DATABASE_URL`; `.env.example` is the template. The container maps to
-**5434** because 5432 and 5433 were already taken on the dev machine.
+`DATABASE_URL` takes either of two Postgres options:
+
+- **Neon** — what `.env` points at now: the serverless branch in `eu-central-1`. Use the
+  `-pooler` host and keep `sslmode=require`; postgres.js reads `sslmode` straight out of
+  the URL, so the client in [db/index.ts](db/index.ts) needs no extra options.
+- **Local Docker** — `pnpm db:up` brings up Postgres 17 from `docker-compose.yml` for
+  working offline; the commented line in `.env` switches to it. It maps to host port
+  **5434** because 5432 and 5433 were already taken on the dev machine.
+
+`.env` is gitignored and stays that way: the Neon string is a live credential reachable
+from anywhere, not a localhost password.
 
 ## The one idea
 
