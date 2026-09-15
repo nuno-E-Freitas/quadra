@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: quadra-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: quadra
+      POSTGRES_PASSWORD: quadra
+      POSTGRES_DB: quadra
+    ports:
+      - "5434:5432"
+    volumes:
+      - quadra-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quadra -d quadra"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  quadra-pgdata:

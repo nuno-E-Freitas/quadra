@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Quadra
 
-## Getting Started
+A futsal tactics board that remembers the movement. Place players and the ball on a
+40 × 20 m court, drag them, and every move leaves its path behind — then send a player
+a link and they see where they go and where the ball goes, in order.
 
-First, run the development server:
+## Running it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+pnpm db:up        # Postgres 17 in Docker, host port 5434
+pnpm db:migrate   # apply db/migrations
+pnpm db:seed      # optional: demo@quadra.local / quadra-demo, plus one worked play
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`.env` holds `DATABASE_URL`; `.env.example` is the template. The container maps to
+**5434** because 5432 and 5433 were already taken on the dev machine.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## The one idea
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+A play and a training drill are the same object: *a set of tokens on a court, plus an
+ordered list of steps, plus the path each token takes during each step.* `play` and
+`training` are two validation profiles over that one structure ([lib/scene.ts](lib/scene.ts)) —
+a play locks to 5 v 5 with one ball, a training allows up to 20 tokens, free colours
+and cones. One editor, one renderer, one playback engine, one table.
 
-## Learn More
+## Shape of the code
 
-To learn more about Next.js, take a look at the following resources:
+| Path | What it holds |
+| --- | --- |
+| [lib/scene.ts](lib/scene.ts) | The Zod contract for a scene, and the profile rules. The single source of truth for the editor, the server actions and the JSONB column. |
+| [lib/geometry.ts](lib/geometry.ts) | Catmull-Rom curves, Ramer–Douglas–Peucker simplification, arc-length sampling, and the five-stroke notation vocabulary. |
+| [lib/editor-store.ts](lib/editor-store.ts) | Zustand + zundo. Holds the scene, the step you are editing, undo/redo. |
+| [components/board/](components/board/) | The SVG court, the board renderer, the playback loop, the editor, the read-only player. |
+| [db/schema.ts](db/schema.ts) | `users`, `sessions`, and one `drills` table with a JSONB `scene`. |
+| [lib/auth/](lib/auth/) | Email + password, bcrypt at cost 12, database-backed cookie sessions. |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Why steps, not a timeline
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Coaches think in steps — *"first the pass into the pivot, then the overlap"* — and steps
+are far easier to edit, reorder, annotate and play back one at a time than a continuous
+keyframe timeline. Each step stores its `moves` **and** the resting `positions` at its
+end. That redundancy is deliberate: rendering any step is instant without replaying
+history, and it survives a move being deleted.
 
-## Deploy on Vercel
+### Why one JSONB column
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The scene is always read and written whole, and its shape will move a dozen times while
+the editor finds its feet. `schemaVersion` lives inside the document, so a migration is
+a function rather than a DDL script. Every write goes through `validateScene`, and every
+read is parsed on the way out — the column is never trusted.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Auth
+
+Email and password, on the coach side only. The player-facing `/b/[shareId]` link stays
+public on purpose: an unguessable nanoid, no login, opened on a phone at the side of a
+court. That link is the point of the product; a signup wall in front of it would defeat it.
+
+Sessions are a random 32-byte token in an httpOnly cookie; the database stores only its
+SHA-256, so a database leak hands nobody a working session. Expiry is 30 days, slid
+forward once a session passes its halfway point.
+
+## Where it stands
+
+Built: the court and tokens, drag-to-record paths with the five line kinds, steps with
+notes and durations, playback with scrub and speed, undo/redo, autosave to Postgres,
+the library, and the public share link.
+
+Not built yet: PNG/WebM export, the session builder that prints a training sheet,
+reorderable step thumbnails, tags and filtering in the library, and ball attachment is
+manual (pick the carrier in the token panel) rather than inferred.

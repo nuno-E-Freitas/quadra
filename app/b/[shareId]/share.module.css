@@ -1,0 +1,29 @@
+.shell {
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 900px;
+  margin-inline: auto;
+  padding: clamp(18px, 4vw, 32px) clamp(16px, 4vw, 28px) 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.head h1 {
+  font-size: clamp(1.3rem, 3.4vw, 1.8rem);
+  font-weight: 700;
+}
+
+.foot {
+  display: flex;
+  justify-content: center;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  opacity: 0.75;
+}
