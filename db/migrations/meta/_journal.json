@@ -8,6 +8,13 @@
       "when": 1789466206281,
       "tag": "0000_careful_shooting_star",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789469261381,
+      "tag": "0001_long_bug",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,9 @@ import { pointAtLength, sample, type Sampled } from "@/lib/geometry";
 import type { Scene, Vec } from "@/lib/scene";
 import type { DrawnMove } from "./board-view";
 
+/** 0.25x is for picking apart a rotation; 2x is for a quick recap. */
+export const SPEEDS = [0.25, 0.5, 1, 2] as const;
+
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
 type Frame = { positions: Record<string, Vec>; moves: DrawnMove[] };
@@ -29,12 +32,30 @@ export function usePlayback(scene: Scene, opts?: { autoPlay?: boolean }) {
 
   const [playing, setPlaying] = useState(() => Boolean(opts?.autoPlay) && timeline.total > 0);
   const [elapsed, setElapsed] = useState(0);
-  const [speed, setSpeed] = useState(1);
+  const [speed, setSpeedState] = useState(1);
   const raf = useRef(0);
   const startedAt = useRef(0);
   const offset = useRef(0);
+  /** Where the run must halt, for "play one step and wait". null = run to the end. */
+  const haltAt = useRef<number | null>(null);
 
   const reduced = useReducedMotion();
+
+  /**
+   * A viewer who asks the system for reduced motion gets the run at double rate
+   * by default — the same movement, less of it on screen. But tapping a speed is
+   * a deliberate choice and outranks the heuristic from then on; otherwise 0.5x
+   * silently played at 1x for exactly the people most likely to want it slow.
+   */
+  const speedChosen = useRef(false);
+  const setSpeed = useCallback((rate: number) => {
+    speedChosen.current = true;
+    setSpeedState(rate);
+  }, []);
+
+  useEffect(() => {
+    if (reduced && !speedChosen.current) setSpeedState(2);
+  }, [reduced]);
 
   const sampled = useMemo(() => {
     const map = new Map<string, Sampled>();
@@ -87,6 +108,7 @@ export function usePlayback(scene: Scene, opts?: { autoPlay?: boolean }) {
 
   const play = useCallback(() => {
     if (timeline.total === 0) return;
+    haltAt.current = null;
     if (offset.current >= timeline.total) {
       offset.current = 0;
       setElapsed(0);
@@ -106,17 +128,18 @@ export function usePlayback(scene: Scene, opts?: { autoPlay?: boolean }) {
 
   useEffect(() => {
     if (!playing) return;
-    const rate = speed * (reduced ? 2 : 1);
     startedAt.current = performance.now();
     let last = offset.current;
 
     const tick = (now: number) => {
-      const next = offset.current + (now - startedAt.current) * rate;
-      if (next >= timeline.total) {
-        last = timeline.total;
-        offset.current = timeline.total;
-        setElapsed(timeline.total);
+      const next = offset.current + (now - startedAt.current) * speed;
+      const limit = Math.min(haltAt.current ?? Number.POSITIVE_INFINITY, timeline.total);
+      if (next >= limit) {
+        last = limit;
+        offset.current = limit;
+        setElapsed(limit);
         setPlaying(false);
+        haltAt.current = null;
         return;
       }
       last = next;
@@ -130,7 +153,29 @@ export function usePlayback(scene: Scene, opts?: { autoPlay?: boolean }) {
       // Resume from where the playhead actually stopped, not from the last seek.
       offset.current = Math.min(last, timeline.total);
     };
-  }, [playing, speed, reduced, timeline.total]);
+  }, [playing, speed, timeline.total]);
+
+  /**
+   * Play exactly one step and stop on its last frame. Coaches teach a play one
+   * beat at a time — stopping on the beat is more useful than slowing it down.
+   */
+  const playStep = useCallback(() => {
+    if (timeline.total === 0) return;
+    const from = offset.current >= timeline.total ? 0 : offset.current;
+    // A hair past the boundary, so resting exactly on a step end picks the next.
+    const step =
+      timeline.segments.find((seg) => from < seg.end - 1) ?? timeline.segments[timeline.segments.length - 1];
+    if (!step) return;
+    if (from < step.start) {
+      offset.current = step.start;
+      setElapsed(step.start);
+    } else if (offset.current >= timeline.total) {
+      offset.current = 0;
+      setElapsed(0);
+    }
+    haltAt.current = step.end;
+    setPlaying(true);
+  }, [timeline.segments, timeline.total]);
 
   const frame = useMemo(() => frameAt(elapsed), [frameAt, elapsed]);
 
@@ -141,10 +186,13 @@ export function usePlayback(scene: Scene, opts?: { autoPlay?: boolean }) {
     speed,
     setSpeed,
     play,
+    playStep,
     stop,
     reset,
     seek,
     frame,
+    /** False once the playhead is resting on the final step's last frame. */
+    hasNextStep: timeline.total > 0 && elapsed < timeline.total,
     /** The step the playhead is inside, for highlighting the step strip. */
     activeStep: timeline.segments.find((s) => elapsed >= s.start && elapsed < s.end)?.index ?? 0,
   };

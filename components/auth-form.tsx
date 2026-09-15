@@ -7,7 +7,7 @@ import styles from "@/app/(auth)/auth.module.css";
 
 const initial: AuthState = { error: null };
 
-export function AuthForm({ mode }: { mode: "login" | "signup" }) {
+export function AuthForm({ mode, invite }: { mode: "login" | "signup"; invite?: string }) {
   const isSignup = mode === "signup";
   const [state, formAction, pending] = useActionState(isSignup ? signup : login, initial);
 
@@ -21,6 +21,8 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
             {state.error}
           </p>
         ) : null}
+
+        {invite ? <input type="hidden" name="invite" value={invite} /> : null}
 
         {isSignup ? (
           <div className="field">
@@ -62,11 +64,13 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       <p className={styles.alt}>
         {isSignup ? (
           <>
-            Already have an account? <Link href="/login">Sign in</Link>
+            Already have an account?{" "}
+            <Link href={invite ? `/login?invite=${invite}` : "/login"}>Sign in</Link>
           </>
         ) : (
           <>
-            No account yet? <Link href="/signup">Create one</Link>
+            No account yet?{" "}
+            <Link href={invite ? `/signup?invite=${invite}` : "/signup"}>Create one</Link>
           </>
         )}
       </p>

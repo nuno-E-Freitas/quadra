@@ -3,6 +3,11 @@ import { AuthForm } from "@/components/auth-form";
 
 export const metadata: Metadata = { title: "Create account · Quadra" };
 
-export default function SignupPage() {
-  return <AuthForm mode="signup" />;
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ invite?: string }>;
+}) {
+  const { invite } = await searchParams;
+  return <AuthForm mode="signup" invite={invite} />;
 }

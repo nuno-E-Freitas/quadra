@@ -3,14 +3,14 @@ import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { drills } from "@/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requireCoach } from "@/lib/auth/session";
 import { createDrill } from "@/lib/drills/actions";
 import styles from "../app.module.css";
 
 export const metadata: Metadata = { title: "Library · Quadra" };
 
 export default async function DrillsPage() {
-  const user = await requireUser();
+  const user = await requireCoach();
 
   const rows = await db
     .select({

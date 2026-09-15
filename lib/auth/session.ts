@@ -2,9 +2,9 @@ import { createHash, randomBytes } from "node:crypto";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { sessions, users } from "@/db/schema";
+import { sessions, users, type UserRole } from "@/db/schema";
 
 const COOKIE = "quadra_session";
 const DAY = 86_400_000;
@@ -12,7 +12,7 @@ const LIFETIME = 30 * DAY;
 /** Slide the expiry forward once a session is past its halfway point. */
 const RENEW_BELOW = 15 * DAY;
 
-export type SessionUser = { id: string; email: string; name: string };
+export type SessionUser = { id: string; email: string; name: string; role: UserRole };
 
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 
@@ -49,10 +49,19 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
       id: users.id,
       email: users.email,
       name: users.name,
+      role: users.role,
     })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
-    .where(and(eq(sessions.id, id), gt(sessions.expiresAt, new Date())))
+    .where(
+      and(
+        eq(sessions.id, id),
+        gt(sessions.expiresAt, new Date()),
+        // A disabled account keeps its rows but stops being anyone, immediately
+        // — the live cookie is refused rather than waiting for its expiry.
+        isNull(users.disabledAt),
+      ),
+    )
     .limit(1);
 
   if (!row) return null;
@@ -74,13 +83,33 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     }
   }
 
-  return { id: row.id, email: row.email, name: row.name };
+  return { id: row.id, email: row.email, name: row.name, role: row.role };
 });
 
 export async function requireUser(): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   return user;
+}
+
+/**
+ * Authorization lives here rather than in a layout: a layout does not re-render
+ * on navigation and does not control whether the rest of the route runs, so a
+ * check placed there is not a gate. Every caller of the data goes through these.
+ */
+export async function requireRole(...allowed: UserRole[]): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!allowed.includes(user.role)) redirect("/feed");
+  return user;
+}
+
+/** Someone who may own drills and squads. Admins count — they can do anything. */
+export function requireCoach() {
+  return requireRole("admin", "coach");
+}
+
+export function requireAdmin() {
+  return requireRole("admin");
 }
 
 export async function destroySession() {

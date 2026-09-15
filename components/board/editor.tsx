@@ -8,7 +8,7 @@ import { MOVE_STYLE } from "@/lib/geometry";
 import { PALETTE } from "@/lib/presets";
 import { PROFILES, moveKinds, type Scene, type Vec } from "@/lib/scene";
 import { BoardView, type DrawnMove } from "./board-view";
-import { usePlayback } from "./use-playback";
+import { usePlayback, SPEEDS } from "./use-playback";
 import styles from "./editor.module.css";
 
 type DrillProps = {
@@ -265,6 +265,15 @@ export function Editor({ drill }: { drill: DrillProps }) {
             >
               {playback.playing ? "■ Stop" : "▶ Play the move"}
             </button>
+            <button
+              className="btn"
+              type="button"
+              onClick={playback.playStep}
+              disabled={!playback.hasNextStep}
+              title="Play the next step and stop on it"
+            >
+              ▸| Step
+            </button>
             <button className="btn" type="button" onClick={() => playback.reset()} disabled={playback.elapsed === 0}>
               Reset
             </button>
@@ -302,7 +311,7 @@ export function Editor({ drill }: { drill: DrillProps }) {
               {(playback.elapsed / 1000).toFixed(1)}s / {(playback.total / 1000).toFixed(1)}s
             </span>
             <div className={styles.segs} role="group" aria-label="Speed">
-              {[0.5, 1, 2].map((rate) => (
+              {SPEEDS.map((rate) => (
                 <button
                   key={rate}
                   type="button"

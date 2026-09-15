@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import type { Scene } from "@/lib/scene";
 import { BoardView } from "./board-view";
-import { usePlayback } from "./use-playback";
+import { SPEEDS, usePlayback } from "./use-playback";
 import styles from "./editor.module.css";
 
 /**
@@ -34,6 +34,15 @@ export function Player({ scene, title }: { scene: Scene; title: string }) {
             >
               {playback.playing ? "■ Pause" : playback.elapsed >= playback.total ? "▶ Again" : "▶ Play"}
             </button>
+            <button
+              className="btn"
+              type="button"
+              onClick={playback.playStep}
+              disabled={!playback.hasNextStep}
+              title="Play the next step and stop"
+            >
+              ▸| Step
+            </button>
             <input
               className={styles.scrub}
               type="range"
@@ -45,7 +54,7 @@ export function Player({ scene, title }: { scene: Scene; title: string }) {
               aria-label="Scrub playback"
             />
             <div className={styles.segs} role="group" aria-label="Speed">
-              {[0.5, 1, 2].map((rate) => (
+              {SPEEDS.map((rate) => (
                 <button
                   key={rate}
                   type="button"

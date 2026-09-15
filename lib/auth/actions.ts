@@ -1,11 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { isUniqueViolation } from "@/lib/db-errors";
-import { users } from "@/db/schema";
+import { invites, memberships, users } from "@/db/schema";
 import { MAX_PASSWORD_BYTES, hashPassword, verifyPassword } from "./password";
 import { createSession, destroySession } from "./session";
 
@@ -41,13 +41,33 @@ export async function signup(_prev: AuthState, formData: FormData): Promise<Auth
 
   const passwordHash = await hashPassword(parsed.data.password);
 
+  // An account born from an invite takes its standing from that invite: a squad
+  // being handed a join link gets players, not fifteen new coaches with their
+  // own empty libraries. A bare signup is still someone starting a squad.
+  const code = String(formData.get("invite") ?? "").trim();
+  const invite = code ? await findInvite(code) : null;
+
   let userId: string;
   try {
-    const [created] = await db
-      .insert(users)
-      .values({ name: parsed.data.name, email: parsed.data.email, passwordHash })
-      .returning({ id: users.id });
-    userId = created.id;
+    userId = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(users)
+        .values({
+          name: parsed.data.name,
+          email: parsed.data.email,
+          passwordHash,
+          role: invite?.role === "player" ? "player" : "coach",
+        })
+        .returning({ id: users.id });
+
+      if (invite) {
+        await tx
+          .insert(memberships)
+          .values({ teamId: invite.teamId, userId: created.id, role: invite.role })
+          .onConflictDoNothing();
+      }
+      return created.id;
+    });
   } catch (err) {
     if (isUniqueViolation(err, "users_email_key")) {
       return { error: "That email already has an account. Try signing in." };
@@ -56,7 +76,16 @@ export async function signup(_prev: AuthState, formData: FormData): Promise<Auth
   }
 
   await createSession(userId);
-  redirect("/drills");
+  redirect(invite?.role === "player" ? "/feed" : "/drills");
+}
+
+function findInvite(code: string) {
+  return db
+    .select({ teamId: invites.teamId, role: invites.role })
+    .from(invites)
+    .where(and(eq(invites.code, code), gt(invites.expiresAt, new Date())))
+    .limit(1)
+    .then((rows) => rows[0] ?? null);
 }
 
 export async function login(_prev: AuthState, formData: FormData): Promise<AuthState> {
@@ -69,7 +98,12 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
   }
 
   const [user] = await db
-    .select({ id: users.id, passwordHash: users.passwordHash })
+    .select({
+      id: users.id,
+      passwordHash: users.passwordHash,
+      role: users.role,
+      disabledAt: users.disabledAt,
+    })
     .from(users)
     .where(eq(users.email, parsed.data.email))
     .limit(1);
@@ -81,9 +115,15 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
     user?.passwordHash ?? "$2b$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalidinv",
   );
   if (!user || !ok) return { error: "Wrong email or password." };
+  // Checked only after the password, so the message cannot be used to find out
+  // which addresses hold disabled accounts.
+  if (user.disabledAt) return { error: "That account has been disabled. Ask your coach." };
 
   await createSession(user.id);
-  redirect("/drills");
+
+  const code = String(formData.get("invite") ?? "").trim();
+  if (code) redirect(`/join/${code}`);
+  redirect(user.role === "player" ? "/feed" : "/drills");
 }
 
 export async function logout() {
