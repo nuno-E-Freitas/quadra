@@ -1,5 +1,6 @@
 import { DEFAULT_PITCH, PITCH_PRESETS, newScene } from "@/lib/presets";
-import { PITCH_OVERLAYS, sceneSchema } from "@/lib/scene";
+import { useEditor } from "@/lib/editor-store";
+import { PITCH_OVERLAYS, sceneSchema, validateScene } from "@/lib/scene";
 
 let failures = 0;
 function check(label: string, actual: unknown, expected: unknown) {
@@ -89,6 +90,45 @@ console.log("\n== linhas do pavilhão ==");
     PITCH_OVERLAYS.filter((o) => !sceneSchema.safeParse(newScene("play", { overlays: [o] })).success),
     [],
   );
+}
+
+console.log("\n== linhas desenhadas à mão ==");
+{
+  useEditor.getState().load(newScene("play"));
+  const line = [
+    { x: 8, y: 4 },
+    { x: 12, y: 4.1 },
+    { x: 16, y: 4 },
+  ];
+
+  useEditor.getState().addPitchMark(line, "#f0b429");
+  check("a linha ficou no campo", useEditor.getState().scene.pitch.marks.length, 1);
+  check("com a cor escolhida", useEditor.getState().scene.pitch.marks[0].color, "#f0b429");
+  check("e a cena continua válida", validateScene(useEditor.getState().scene).success, true);
+
+  // A stroke the pointer barely moved on is a slip, not a line.
+  useEditor.getState().addPitchMark([{ x: 1, y: 1 }], "#f0b429");
+  check("um ponto solto não conta", useEditor.getState().scene.pitch.marks.length, 1);
+
+  useEditor.getState().addPitchMark(line, "#5aa9f0");
+  useEditor.getState().undoPitchMark();
+  check("apagar a última deixa a anterior", useEditor.getState().scene.pitch.marks.length, 1);
+
+  useEditor.getState().clearPitchMarks();
+  check("limpar deixa o campo liso", useEditor.getState().scene.pitch.marks, []);
+
+  // The column caps them, so the editor has to as well.
+  for (let i = 0; i < 40; i++) useEditor.getState().addPitchMark(line, "#f0b429");
+  check("pára no limite de 30", useEditor.getState().scene.pitch.marks.length, 30);
+  check("e o que ficou é válido", validateScene(useEditor.getState().scene).success, true);
+}
+
+console.log("\n== uma cena antiga não tem linhas desenhadas ==");
+{
+  const old = { ...newScene("play"), pitch: { width: 40, height: 20, variant: "full" } };
+  const parsed = sceneSchema.safeParse(old);
+  check("continua válida", parsed.success, true);
+  if (parsed.success) check("e fica sem linhas", parsed.data.pitch.marks, []);
 }
 
 console.log(failures === 0 ? "\nTUDO PASSA\n" : `\n${failures} FALHA(S)\n`);

@@ -4,10 +4,17 @@ import { useState } from "react";
 import { BoardView } from "@/components/board/board-view";
 import { OVERLAY_LABEL } from "@/components/board/pitch";
 import { PITCH_PRESETS } from "@/lib/presets";
-import { PITCH_OVERLAYS, type PitchOverlay, type Scene } from "@/lib/scene";
+import { PITCH_OVERLAYS, type PitchMark, type PitchOverlay, type Scene } from "@/lib/scene";
 import styles from "@/app/(app)/app.module.css";
 
-type Look = { surface: string; lines: string; surround: string; overlays: PitchOverlay[] };
+type Look = {
+  surface: string;
+  lines: string;
+  surround: string;
+  overlays: PitchOverlay[];
+  /** Drawn in the editor and saved from there, so shown here but not editable. */
+  marks: PitchMark[];
+};
 
 /**
  * Three colours, the other sports painted on the same floor, and a court to see

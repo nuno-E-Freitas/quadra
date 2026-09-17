@@ -13,7 +13,14 @@ import {
 import type { Scene } from "@/lib/scene";
 
 export type UserPreferences = {
-  pitch?: { surface?: string; lines?: string; surround?: string; overlays?: string[] };
+  pitch?: {
+    surface?: string;
+    lines?: string;
+    surround?: string;
+    overlays?: string[];
+    /** Hand-drawn court lines. Read back through the scene schema, never trusted. */
+    marks?: unknown[];
+  };
 };
 
 export const USER_ROLES = ["admin", "coach", "player"] as const;

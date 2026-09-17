@@ -11,7 +11,11 @@ import {
 } from "@/lib/drills/type-actions";
 import { SUGGESTED_TYPES, listDrillTypes } from "@/lib/drills/types";
 import { newScene } from "@/lib/presets";
-import { resetPitchPreference, savePitchPreference } from "@/lib/settings/actions";
+import {
+  clearDefaultPitchMarks,
+  resetPitchPreference,
+  savePitchPreference,
+} from "@/lib/settings/actions";
 import { getPitchDefaults } from "@/lib/settings/queries";
 import styles from "../app.module.css";
 
@@ -122,7 +126,16 @@ export default async function SettingsPage() {
             <button className="btn" type="submit" formAction={resetPitchPreference}>
               Voltar ao original
             </button>
+            {pitch.marks.length > 0 ? (
+              <button className="btn" type="submit" formAction={clearDefaultPitchMarks}>
+                Limpar as {pitch.marks.length} linhas desenhadas
+              </button>
+            ) : null}
           </div>
+          <p className={styles.meta} style={{ textTransform: "none", letterSpacing: 0, marginTop: 10 }}>
+            As linhas desenhadas à mão fazem-se no editor de uma jogada, em <b>Montar → Campo</b>, e
+            guardam-se aqui com <b>Guardar como campo padrão</b>.
+          </p>
         </form>
       </section>
 

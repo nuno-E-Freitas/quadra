@@ -1,3 +1,4 @@
+import { curvePath } from "@/lib/geometry";
 import type { PitchOverlay, Scene } from "@/lib/scene";
 
 /**
@@ -10,7 +11,7 @@ import type { PitchOverlay, Scene } from "@/lib/scene";
  * is what the video export rasterises — has no cascade to read variables from.
  */
 export function PitchBackground({ pitch }: { pitch: Scene["pitch"] }) {
-  const { variant, surface, lines, surround, overlays } = pitch;
+  const { variant, surface, lines, surround, overlays, marks } = pitch;
 
   return (
     <g>
@@ -51,6 +52,21 @@ export function PitchBackground({ pitch }: { pitch: Scene["pitch"] }) {
         <path d="M 0 8.5 L -0.85 8.5 L -0.85 11.5 L 0 11.5" />
         <path d="M 40 8.5 L 40.85 8.5 L 40.85 11.5 L 40 11.5" />
       </g>
+
+      {/* Above the printed lines so it reads as something added to the floor,
+          still below the players so it never hides one. */}
+      {marks.map((mark) => (
+        <path
+          key={mark.id}
+          d={curvePath(mark.points)}
+          fill="none"
+          stroke={mark.color}
+          strokeOpacity="0.72"
+          strokeWidth="0.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
 
       <g fill={lines} fillOpacity="0.62">
         {[

@@ -41,6 +41,9 @@ export type EditorState = {
   setTokenLabel: (id: string, label: string) => void;
   attachBall: (ballId: string, carrierId: string | null) => void;
   setPitch: (colours: Partial<Scene["pitch"]>) => void;
+  addPitchMark: (points: Vec[], color: string) => void;
+  undoPitchMark: () => void;
+  clearPitchMarks: () => void;
 };
 
 const clone = <T,>(value: T): T => structuredClone(value);
@@ -50,6 +53,9 @@ const MAX_STEPS = 40;
 
 /** And the board at 24 pieces, for the same reason. */
 const MAX_TOKENS = 24;
+
+/** And hand-drawn court lines at 30. */
+const MAX_PITCH_MARKS = 30;
 
 /** Tools that mean the player has the ball. A screen, a pass or a shot does not. */
 const CARRYING_TOOLS: MoveKind[] = ["run", "dribble"];
@@ -378,6 +384,42 @@ export const useEditor = create<EditorState>()(
         set((s) => {
           const scene = clone(s.scene);
           scene.pitch = { ...scene.pitch, ...colours };
+          return { scene, revision: s.revision + 1 };
+        }),
+
+      /**
+       * A line drawn on the court itself. Simplified like a movement path — a
+       * pointer emits far more points than the shape needs, and thirty of these
+       * are stored in the same JSONB column as the whole play.
+       */
+      addPitchMark: (points, color) =>
+        set((s) => {
+          if (s.scene.pitch.marks.length >= MAX_PITCH_MARKS) return s;
+          const simplified = simplify(points, 0.3).slice(0, 120);
+          if (simplified.length < 2) return s;
+
+          const scene = clone(s.scene);
+          scene.pitch.marks.push({
+            id: `m${Date.now().toString(36)}`,
+            points: simplified,
+            color,
+          });
+          return { scene, revision: s.revision + 1 };
+        }),
+
+      undoPitchMark: () =>
+        set((s) => {
+          if (s.scene.pitch.marks.length === 0) return s;
+          const scene = clone(s.scene);
+          scene.pitch.marks.pop();
+          return { scene, revision: s.revision + 1 };
+        }),
+
+      clearPitchMarks: () =>
+        set((s) => {
+          if (s.scene.pitch.marks.length === 0) return s;
+          const scene = clone(s.scene);
+          scene.pitch.marks = [];
           return { scene, revision: s.revision + 1 };
         }),
 

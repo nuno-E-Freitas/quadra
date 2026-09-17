@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users, type UserPreferences } from "@/db/schema";
 import { DEFAULT_PITCH } from "@/lib/presets";
-import { PITCH_OVERLAYS, type PitchOverlay } from "@/lib/scene";
+import { PITCH_OVERLAYS, pitchMarkSchema, type PitchOverlay } from "@/lib/scene";
 
 export async function getPreferences(userId: string): Promise<UserPreferences> {
   const [row] = await db
@@ -25,5 +25,13 @@ export async function getPitchDefaults(userId: string) {
     (PITCH_OVERLAYS as readonly string[]).includes(name),
   );
 
-  return { ...DEFAULT_PITCH, ...stored, overlays };
+  // Same reasoning for the drawn lines: whatever is in the column gets parsed,
+  // and anything that would not survive the scene schema is dropped rather than
+  // carried into a new play that then refuses to save.
+  const marks = (stored.marks ?? [])
+    .map((mark) => pitchMarkSchema.safeParse(mark))
+    .filter((result) => result.success)
+    .map((result) => result.data);
+
+  return { ...DEFAULT_PITCH, ...stored, overlays, marks };
 }

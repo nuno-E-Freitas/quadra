@@ -1,4 +1,4 @@
-import type { PitchOverlay, Scene, SceneKind, Vec } from "./scene";
+import type { PitchMark, PitchOverlay, Scene, SceneKind, Vec } from "./scene";
 
 export const COLORS = {
   home: "#2bb8a3",
@@ -51,6 +51,7 @@ export type PitchLook = {
   lines: string;
   surround: string;
   overlays: PitchOverlay[];
+  marks: PitchMark[];
 };
 
 /** The court as it has always looked. A coach's saved preference overrides it. */
@@ -59,10 +60,11 @@ export const DEFAULT_PITCH: PitchLook = {
   lines: "#ffffff",
   surround: "#17302e",
   overlays: [],
+  marks: [],
 };
 
 /** Ready-made courts, so nobody has to find three colours that work together. */
-export const PITCH_PRESETS: ({ name: string } & Omit<PitchLook, "overlays">)[] = [
+export const PITCH_PRESETS: ({ name: string } & Omit<PitchLook, "overlays" | "marks">)[] = [
   { name: "Quadra", surface: "#1b3a37", lines: "#ffffff", surround: "#17302e" },
   { name: "Pavilhão", surface: "#2f4f7a", lines: "#ffffff", surround: "#1d3352" },
   { name: "Madeira", surface: "#c08a4e", lines: "#ffffff", surround: "#8a5f33" },

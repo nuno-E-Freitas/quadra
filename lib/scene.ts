@@ -58,6 +58,19 @@ export type PitchOverlay = (typeof PITCH_OVERLAYS)[number];
 /** Six-digit hex, because that is what <input type="color"> emits. */
 const hexColour = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Cor inválida.");
 
+/**
+ * A line the coach drew on the court by hand. Belongs to the pitch, not to a
+ * step: it is a feature of the floor they train on — the faded line nobody
+ * repainted, the zone this club presses in — so it does not move and does not
+ * take part in the playback.
+ */
+export const pitchMarkSchema = z.object({
+  id: z.string().min(1).max(40),
+  points: z.array(vecSchema).min(2).max(120),
+  color: hexColour,
+});
+export type PitchMark = z.infer<typeof pitchMarkSchema>;
+
 export const sceneSchema = z.object({
   schemaVersion: z.literal(1),
   kind: z.enum(["play", "training"]),
@@ -75,6 +88,8 @@ export const sceneSchema = z.object({
     surround: hexColour.default("#17302e"),
     /** Court markings drawn faintly beneath the futsal lines. */
     overlays: z.array(z.enum(PITCH_OVERLAYS)).max(3).default([]),
+    /** And whatever the coach drew on top of them. */
+    marks: z.array(pitchMarkSchema).max(30).default([]),
   }),
   tokens: z.array(tokenSchema).min(1).max(24),
   /** steps[0] is the setup: positions only, no moves. */

@@ -19,7 +19,7 @@ type Props = {
   draggingId?: string | null;
   interactive?: boolean;
   onTokenPointerDown?: (id: string, event: React.PointerEvent<SVGGElement>) => void;
-  onBackgroundPointerDown?: () => void;
+  onBackgroundPointerDown?: (event: React.PointerEvent<SVGSVGElement>) => void;
 };
 
 export const BoardView = forwardRef<SVGSVGElement, Props>(function BoardView(
@@ -46,7 +46,7 @@ export const BoardView = forwardRef<SVGSVGElement, Props>(function BoardView(
       aria-label="Futsal court"
       style={{ display: "block", width: "100%", height: "auto", touchAction: "none" }}
       onPointerDown={(e) => {
-        if (e.target === e.currentTarget) onBackgroundPointerDown?.();
+        if (e.target === e.currentTarget) onBackgroundPointerDown?.(e);
       }}
     >
       <PitchBackground pitch={scene.pitch} />
@@ -167,7 +167,12 @@ function TokenMark({
 }) {
   const common = {
     transform: `translate(${at.x.toFixed(2)},${at.y.toFixed(2)})`,
-    style: { cursor: interactive ? (dragging ? "grabbing" : "grab") : "default" } as const,
+    style: {
+      cursor: interactive ? (dragging ? "grabbing" : "grab") : "default",
+      // Otherwise a piece eats the pointer that was meant for the court beneath
+      // it — which is exactly what drawing on the pitch needs to reach.
+      pointerEvents: interactive ? undefined : ("none" as const),
+    } as const,
     onPointerDown: interactive ? (e: React.PointerEvent<SVGGElement>) => onPointerDown?.(token.id, e) : undefined,
   };
 

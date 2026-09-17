@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { saveDrill } from "@/lib/drills/actions";
+import { savePitchAsDefault } from "@/lib/settings/actions";
 import { useEditor, useTemporal } from "@/lib/editor-store";
 import { MOVE_STYLE } from "@/lib/geometry";
 import { PALETTE, PITCH_PRESETS } from "@/lib/presets";
@@ -26,6 +27,9 @@ type DrillProps = {
   shareUrl: string;
   scene: Scene;
 };
+
+/** Not a token id: the drag machinery uses it to mean "this stroke is the floor". */
+const PITCH_INK = "__pitch";
 
 /** Below this, a drag was a tap: select the token instead of recording a path. */
 const TAP_THRESHOLD_M = 0.8;
@@ -77,12 +81,23 @@ export function Editor({ drill }: { drill: DrillProps }) {
   const [saved, setSaved] = useState({ revision: 0, title: drill.title });
   const [saveError, setSaveError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [mode, setMode] = useState<Mode>(drill.scene.steps.length > 1 ? "rever" : "montar");
+  /** Drawing on the court itself rather than moving what stands on it. */
+  const [drawing, setDrawing] = useState(false);
+  const [ink, setInk] = useState(PALETTE[3]);
+  const [pitchSaved, setPitchSaved] = useState(false);
 
   const dirty = revision !== saved.revision || title !== saved.title;
   const touched = revision > 0 || title !== drill.title;
 
   const svgRef = useRef<SVGSVGElement>(null);
-  const dragRef = useRef<{ id: string; points: Vec[]; travelled: number; offset: Vec } | null>(null);
+  const dragRef = useRef<{
+    id: string;
+    points: Vec[];
+    travelled: number;
+    offset: Vec;
+    color?: string;
+  } | null>(null);
   const [live, setLive] = useState<{ id: string; points: Vec[]; color: string } | null>(null);
 
   const playback = usePlayback(scene);
@@ -145,6 +160,20 @@ export function Editor({ drill }: { drill: DrillProps }) {
     [playback.playing, scene.steps, scene.tokens, stepIndex, toPitch],
   );
 
+  const onBackgroundPointerDown = useCallback(
+    (event: React.PointerEvent<SVGSVGElement>) => {
+      if (!drawing || mode !== "montar") {
+        useEditor.getState().select(null);
+        return;
+      }
+      event.preventDefault();
+      const at = toPitch(event);
+      dragRef.current = { id: PITCH_INK, points: [at], travelled: 0, offset: { x: 0, y: 0 }, color: ink };
+      setLive({ id: PITCH_INK, points: [at], color: ink });
+    },
+    [drawing, mode, toPitch, ink],
+  );
+
   useEffect(() => {
     if (!live) return;
 
@@ -170,6 +199,13 @@ export function Editor({ drill }: { drill: DrillProps }) {
       dragRef.current = null;
       setLive(null);
       if (!drag) return;
+      if (drag.id === PITCH_INK) {
+        // A shorter stroke than this is a tap that slipped, not a line.
+        if (drag.travelled >= 0.5) {
+          useEditor.getState().addPitchMark(drag.points, drag.color ?? PALETTE[3]);
+        }
+        return;
+      }
       if (drag.travelled < TAP_THRESHOLD_M) return; // a tap: selection already happened
       useEditor.getState().recordDrag(drag.id, drag.points);
     };
@@ -226,8 +262,6 @@ export function Editor({ drill }: { drill: DrillProps }) {
 
   const shareUrl = drill.shareUrl;
 
-  const [mode, setMode] = useState<Mode>(drill.scene.steps.length > 1 ? "rever" : "montar");
-
   /**
    * Arranging, recording and reviewing use almost disjoint controls, and showing
    * all of them at once was what made this page feel crowded. One switch, and
@@ -241,6 +275,7 @@ export function Editor({ drill }: { drill: DrillProps }) {
   };
 
   const onPitch = mode !== "rever" && !playback.playing;
+  const movingPieces = onPitch && !drawing;
   const showingRun = mode === "rever" && (playback.playing || playback.elapsed > 0);
 
   const stepStrip = (
@@ -320,9 +355,9 @@ export function Editor({ drill }: { drill: DrillProps }) {
           live={live && live.points.length > 1 ? { points: live.points, color: live.color } : null}
           selectedId={showingRun ? null : selectedId}
           draggingId={live?.id ?? null}
-          interactive={onPitch}
+          interactive={movingPieces}
           onTokenPointerDown={onTokenPointerDown}
-          onBackgroundPointerDown={() => useEditor.getState().select(null)}
+          onBackgroundPointerDown={onBackgroundPointerDown}
         />
       </div>
 
@@ -488,6 +523,71 @@ export function Editor({ drill }: { drill: DrillProps }) {
             <p className={styles.note}>
               As marcações das outras modalidades pintadas no mesmo chão, desenhadas por baixo. O teu
               padrão está nas Definições e vale para tudo o que criares a partir daí.
+            </p>
+
+            <h2>Desenhar no campo</h2>
+            <div className={styles.inline}>
+              <button
+                type="button"
+                className={drawing ? "btn btn-primary" : "btn"}
+                aria-pressed={drawing}
+                onClick={() => setDrawing((on) => !on)}
+              >
+                {drawing ? "✓ A desenhar" : "✎ Desenhar"}
+              </button>
+              <div className={styles.swatches}>
+                {PALETTE.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={styles.sw}
+                    style={{ background: color }}
+                    aria-label={`Cor ${color}`}
+                    aria-pressed={ink.toLowerCase() === color.toLowerCase()}
+                    onClick={() => {
+                      setInk(color);
+                      setDrawing(true);
+                    }}
+                  />
+                ))}
+              </div>
+              <button
+                className="btn"
+                type="button"
+                onClick={() => useEditor.getState().undoPitchMark()}
+                disabled={scene.pitch.marks.length === 0}
+              >
+                Apagar a última
+              </button>
+              <button
+                className="btn"
+                type="button"
+                onClick={() => useEditor.getState().clearPitchMarks()}
+                disabled={scene.pitch.marks.length === 0}
+              >
+                Limpar ({scene.pitch.marks.length})
+              </button>
+            </div>
+            <p className={styles.note}>
+              Com isto ligado, arrastar no quadro risca o chão em vez de mexer as peças — para a linha
+              esbatida que ninguém repintou, ou a zona onde esta equipa pressiona. Fica no campo, não
+              no movimento: não se mexe durante a reprodução.
+            </p>
+
+            <button
+              className="btn"
+              type="button"
+              onClick={async () => {
+                const result = await savePitchAsDefault(scene.pitch);
+                setPitchSaved(result.ok);
+                if (result.ok) setTimeout(() => setPitchSaved(false), 2200);
+              }}
+            >
+              {pitchSaved ? "✓ Guardado como padrão" : "Guardar como campo padrão"}
+            </button>
+            <p className={styles.note}>
+              Guarda esta quadra — cores, linhas do pavilhão e o que desenhaste — nas Definições, e
+              tudo o que criares a partir daí começa assim.
             </p>
 
             <details className={styles.sheet}>
