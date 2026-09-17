@@ -21,6 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <Link href="/drills">Biblioteca</Link>
               <Link href="/trainings">Treinos</Link>
               <Link href="/team">Equipas</Link>
+              <Link href="/settings">Definições</Link>
             </>
           ) : null}
           <Link href="/feed">{coach ? "Vista do jogador" : "Os meus treinos"}</Link>

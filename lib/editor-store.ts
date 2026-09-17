@@ -33,6 +33,7 @@ export type EditorState = {
   setTokenColor: (id: string, color: string) => void;
   setTokenLabel: (id: string, label: string) => void;
   attachBall: (ballId: string, carrierId: string | null) => void;
+  setPitch: (colours: Partial<Scene["pitch"]>) => void;
 };
 
 const clone = <T,>(value: T): T => structuredClone(value);
@@ -279,6 +280,13 @@ export const useEditor = create<EditorState>()(
           const token = scene.tokens.find((t) => t.id === id);
           if (!token) return s;
           token.label = label.slice(0, 3);
+          return { scene, revision: s.revision + 1 };
+        }),
+
+      setPitch: (colours) =>
+        set((s) => {
+          const scene = clone(s.scene);
+          scene.pitch = { ...scene.pitch, ...colours };
           return { scene, revision: s.revision + 1 };
         }),
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { saveDrill } from "@/lib/drills/actions";
 import { useEditor, useTemporal } from "@/lib/editor-store";
 import { MOVE_STYLE } from "@/lib/geometry";
-import { PALETTE } from "@/lib/presets";
+import { PALETTE, PITCH_PRESETS } from "@/lib/presets";
 import { PROFILES, moveKinds, type Scene, type Vec } from "@/lib/scene";
 import { BoardView, type DrawnMove } from "./board-view";
 import { usePlayback, SPEEDS } from "./use-playback";
@@ -513,6 +513,46 @@ export function Editor({ drill }: { drill: DrillProps }) {
               </button>
             </>
           ) : null}
+
+          <h2>Campo</h2>
+          <div className={styles.inline}>
+            {PITCH_PRESETS.map((preset) => (
+              <button
+                key={preset.name}
+                type="button"
+                className={styles.seg}
+                aria-pressed={scene.pitch.surface === preset.surface && scene.pitch.lines === preset.lines}
+                onClick={() =>
+                  useEditor.getState().setPitch({
+                    surface: preset.surface,
+                    lines: preset.lines,
+                    surround: preset.surround,
+                  })
+                }
+              >
+                <i className={styles.dot} style={{ background: preset.surface, borderColor: preset.lines }} />
+                {preset.name}
+              </button>
+            ))}
+          </div>
+          <div className={styles.inline}>
+            {([
+              ["surface", "Piso"],
+              ["lines", "Linhas"],
+              ["surround", "Fora"],
+            ] as const).map(([key, label]) => (
+              <label key={key} className={styles.inline} style={{ gap: 5 }}>
+                <span className={styles.count}>{label}</span>
+                <input
+                  type="color"
+                  value={scene.pitch[key]}
+                  aria-label={label}
+                  onChange={(event) => useEditor.getState().setPitch({ [key]: event.target.value })}
+                  style={{ width: 38, height: 28, padding: 2, cursor: "pointer" }}
+                />
+              </label>
+            ))}
+          </div>
 
           <p className={styles.share}>{shareUrl}</p>
         </section>

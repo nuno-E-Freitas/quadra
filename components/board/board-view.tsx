@@ -49,7 +49,7 @@ export const BoardView = forwardRef<SVGSVGElement, Props>(function BoardView(
         if (e.target === e.currentTarget) onBackgroundPointerDown?.();
       }}
     >
-      <PitchBackground variant={scene.pitch.variant} />
+      <PitchBackground pitch={scene.pitch} />
 
       <g>
         {moves.map((drawn, i) => (

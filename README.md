@@ -47,6 +47,8 @@ and cones. One editor, one renderer, one playback engine, one table.
 | [lib/teams/](lib/teams/) | Squads, memberships, join codes, and publishing a drill to a squad. |
 | [lib/trainings/](lib/trainings/) | A session: an ordered list of drills behind one share link. |
 | [lib/export/record.ts](lib/export/record.ts) | Rasterises the live board frame by frame into an MP4/WebM file. |
+| [lib/settings/](lib/settings/) | Per-coach preferences, kept as JSONB on the user. |
+| [tests/](tests/) | `pnpm test` — the ball-carry rule and the court colours. |
 
 ### Why steps, not a timeline
 
@@ -109,9 +111,13 @@ and Android all accept without converting.
 
 Built: the court and tokens, drag-to-record paths with the five line kinds, steps with
 notes and durations, playback with scrub, speed (0.25x–2x) and step-at-a-time, undo/redo,
-autosave to Postgres, the library with named plays and type filtering, the public share
-link, accounts with roles, squads with join codes, publishing to a squad, the player
-feed, trainings behind one link, video export, and a Portuguese interface.
+autosave to Postgres, the library with named plays and type filtering, deleting a play,
+the public share link, accounts with roles, squads with join codes, publishing to a
+squad, the player feed, trainings behind one link, video export, a recolourable court
+with per-coach defaults, and a Portuguese interface.
+
+The ball is carried by whoever is standing over it: a ball within 1.5 m of a player is at
+his feet, and moving him takes it along. An explicit attachment still overrides proximity.
 
 Not built yet: PNG export, a printable training sheet, reorderable step thumbnails, and
 ball attachment is manual (pick the carrier in the token panel) rather than inferred.

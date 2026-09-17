@@ -45,8 +45,27 @@ const TRAINING_SEED: Seed[] = [
   { id: "ball", kind: "ball", side: "neutral", label: "", color: COLORS.ball, at: { x: 13.9, y: 4.7 } },
 ];
 
+export type PitchColours = { surface: string; lines: string; surround: string };
+
+/** The court as it has always looked. A coach's saved preference overrides it. */
+export const DEFAULT_PITCH: PitchColours = {
+  surface: "#1b3a37",
+  lines: "#ffffff",
+  surround: "#17302e",
+};
+
+/** Ready-made courts, so nobody has to find three colours that work together. */
+export const PITCH_PRESETS: ({ name: string } & PitchColours)[] = [
+  { name: "Quadra", surface: "#1b3a37", lines: "#ffffff", surround: "#17302e" },
+  { name: "Pavilhão", surface: "#2f4f7a", lines: "#ffffff", surround: "#1d3352" },
+  { name: "Madeira", surface: "#c08a4e", lines: "#ffffff", surround: "#8a5f33" },
+  { name: "Terra batida", surface: "#b4573a", lines: "#f4e9e2", surround: "#7e3b28" },
+  { name: "Quadro preto", surface: "#14171a", lines: "#7fe3b0", surround: "#0b0d0f" },
+  { name: "Papel", surface: "#f2efe6", lines: "#2b3a38", surround: "#ddd8c9" },
+];
+
 /** A fresh scene is one setup step and nothing else — steps[0] never has moves. */
-export function newScene(kind: SceneKind): Scene {
+export function newScene(kind: SceneKind, pitch: Partial<PitchColours> = {}): Scene {
   const seed = kind === "play" ? PLAY_SEED : TRAINING_SEED;
   const positions: Record<string, Vec> = {};
   for (const s of seed) positions[s.id] = { ...s.at };
@@ -54,7 +73,7 @@ export function newScene(kind: SceneKind): Scene {
   return {
     schemaVersion: 1,
     kind,
-    pitch: { width: 40, height: 20, variant: "full" },
+    pitch: { width: 40, height: 20, variant: "full", ...DEFAULT_PITCH, ...pitch },
     tokens: seed.map(({ id, kind: k, side, label, color }) => ({ id, kind: k, side, label, color })),
     steps: [{ id: "setup", durationMs: 1000, moves: [], positions }],
     attachments: {},

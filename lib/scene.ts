@@ -46,6 +46,9 @@ export const stepSchema = z.object({
   note: z.string().max(280).optional(),
 });
 
+/** Six-digit hex, because that is what <input type="color"> emits. */
+const hexColour = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Cor inválida.");
+
 export const sceneSchema = z.object({
   schemaVersion: z.literal(1),
   kind: z.enum(["play", "training"]),
@@ -53,6 +56,14 @@ export const sceneSchema = z.object({
     width: z.literal(40),
     height: z.literal(20),
     variant: z.enum(["full", "half", "grid"]).default("full"),
+    /**
+     * Defaults reproduce the original court exactly, and `.default()` fills them
+     * in on the way out — so every scene written before these existed keeps
+     * rendering unchanged without a data migration.
+     */
+    surface: hexColour.default("#1b3a37"),
+    lines: hexColour.default("#ffffff"),
+    surround: hexColour.default("#17302e"),
   }),
   tokens: z.array(tokenSchema).min(1).max(24),
   /** steps[0] is the setup: positions only, no moves. */

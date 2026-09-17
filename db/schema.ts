@@ -12,6 +12,10 @@ import {
 } from "drizzle-orm/pg-core";
 import type { Scene } from "@/lib/scene";
 
+export type UserPreferences = {
+  pitch?: { surface?: string; lines?: string; surround?: string };
+};
+
 export const USER_ROLES = ["admin", "coach", "player"] as const;
 export const TEAM_ROLES = ["coach", "player"] as const;
 export type UserRole = (typeof USER_ROLES)[number];
@@ -32,6 +36,12 @@ export const users = pgTable(
     role: text({ enum: USER_ROLES }).notNull().default("coach"),
     /** Set instead of deleting, so their drills and authorship survive. */
     disabledAt: timestamp({ withTimezone: true }),
+    /**
+     * Per-coach defaults, read and written whole. JSONB rather than columns
+     * because this will grow — the court's colours today, a preferred pitch
+     * variant and step duration tomorrow — and none of it is ever queried on.
+     */
+    preferences: jsonb().$type<UserPreferences>(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("users_email_key").on(t.email)],

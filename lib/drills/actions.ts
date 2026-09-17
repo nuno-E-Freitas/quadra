@@ -9,6 +9,7 @@ import { drills } from "@/db/schema";
 import { requireCoach } from "@/lib/auth/session";
 import { drillTypes } from "@/db/schema";
 import { DEFAULT_TITLE, newScene } from "@/lib/presets";
+import { getPitchDefaults } from "@/lib/settings/queries";
 import { validateScene, type SceneKind } from "@/lib/scene";
 
 export type SaveResult = { ok: true; savedAt: number } | { ok: false; error: string };
@@ -39,7 +40,7 @@ export async function createDrill(formData: FormData) {
       kind,
       typeId,
       title,
-      scene: newScene(kind),
+      scene: newScene(kind, await getPitchDefaults(user.id)),
       shareId: nanoid(12),
     })
     .returning({ id: drills.id });
