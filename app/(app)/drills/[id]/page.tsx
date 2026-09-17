@@ -76,7 +76,7 @@ export default async function DrillPage({ params }: { params: Promise<{ id: stri
           <button className="btn" type="submit">
             Guardar tipo
           </button>
-          <Link href="/types" className={styles.meta}>
+          <Link href="/settings" className={styles.meta}>
             Gerir tipos →
           </Link>
         </form>

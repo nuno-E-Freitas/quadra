@@ -112,7 +112,7 @@ export default async function DrillsPage({
           {countFor(null) > 0
             ? chip("/drills?tipo=" + UNTYPED, "Sem tipo", countFor(null), active === UNTYPED)
             : null}
-          <Link href="/types" className={styles.meta} style={{ marginLeft: 6 }}>
+          <Link href="/settings" className={styles.meta} style={{ marginLeft: 6 }}>
             Gerir tipos →
           </Link>
         </div>

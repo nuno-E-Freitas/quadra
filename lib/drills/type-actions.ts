@@ -14,7 +14,7 @@ const typeName = z.string().trim().min(1).max(40);
 export async function createDrillType(formData: FormData) {
   const user = await requireCoach();
   const parsed = typeName.safeParse(formData.get("name"));
-  if (!parsed.success) redirect("/types");
+  if (!parsed.success) redirect("/settings");
 
   const [{ top }] = await db
     .select({ top: max(drillTypes.position) })
@@ -28,9 +28,9 @@ export async function createDrillType(formData: FormData) {
     .values({ ownerId: user.id, name: parsed.data, position: (top ?? 0) + 1 })
     .onConflictDoNothing();
 
-  revalidatePath("/types");
+  revalidatePath("/settings");
   revalidatePath("/drills");
-  redirect("/types");
+  redirect("/settings");
 }
 
 export async function seedDefaultTypes() {
@@ -41,16 +41,16 @@ export async function seedDefaultTypes() {
     .values(SUGGESTED_TYPES.map((name, i) => ({ ownerId: user.id, name, position: i + 1 })))
     .onConflictDoNothing();
 
-  revalidatePath("/types");
+  revalidatePath("/settings");
   revalidatePath("/drills");
-  redirect("/types");
+  redirect("/settings");
 }
 
 export async function renameDrillType(formData: FormData) {
   const user = await requireCoach();
   const id = String(formData.get("id"));
   const parsed = typeName.safeParse(formData.get("name"));
-  if (!parsed.success) redirect("/types");
+  if (!parsed.success) redirect("/settings");
 
   // Scoped by owner, so one coach cannot rename another's vocabulary.
   await db
@@ -58,9 +58,9 @@ export async function renameDrillType(formData: FormData) {
     .set({ name: parsed.data })
     .where(and(eq(drillTypes.id, id), eq(drillTypes.ownerId, user.id)));
 
-  revalidatePath("/types");
+  revalidatePath("/settings");
   revalidatePath("/drills");
-  redirect("/types");
+  redirect("/settings");
 }
 
 /** The plays survive: type_id is ON DELETE SET NULL, so they become untyped. */
@@ -70,9 +70,9 @@ export async function deleteDrillType(formData: FormData) {
 
   await db.delete(drillTypes).where(and(eq(drillTypes.id, id), eq(drillTypes.ownerId, user.id)));
 
-  revalidatePath("/types");
+  revalidatePath("/settings");
   revalidatePath("/drills");
-  redirect("/types");
+  redirect("/settings");
 }
 
 export async function setDrillType(formData: FormData) {
