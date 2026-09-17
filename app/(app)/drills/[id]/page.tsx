@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, eq } from "drizzle-orm";
@@ -8,6 +7,7 @@ import { Editor } from "@/components/board/editor";
 import { ConfirmButton } from "@/components/confirm-button";
 import { PublishPanel } from "@/components/publish-panel";
 import { requireCoach } from "@/lib/auth/session";
+import { siteOrigin } from "@/lib/origin";
 import { getDrillPublications, getMyTeams } from "@/lib/teams/queries";
 import { deleteDrill } from "@/lib/drills/actions";
 import { setDrillType } from "@/lib/drills/type-actions";
@@ -38,15 +38,12 @@ export default async function DrillPage({ params }: { params: Promise<{ id: stri
   const scene = sceneSchema.safeParse(row.scene);
   if (!scene.success) notFound();
 
-  const [teams, published, types, h] = await Promise.all([
+  const [teams, published, types, origin] = await Promise.all([
     getMyTeams(user.id),
     getDrillPublications(row.id),
     listDrillTypes(user.id),
-    headers(),
+    siteOrigin(),
   ]);
-
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
 
   // Keyed by id so moving between drills remounts the editor with a clean store.
   return (
@@ -57,7 +54,7 @@ export default async function DrillPage({ params }: { params: Promise<{ id: stri
           id: row.id,
           title: row.title,
           shareId: row.shareId,
-          shareUrl: proto + "://" + host + "/b/" + row.shareId,
+          shareUrl: origin + "/b/" + row.shareId,
           scene: scene.data,
         }}
       />

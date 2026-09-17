@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import Link from "next/link";
 import { ConfirmButton } from "@/components/confirm-button";
 import { requireCoach } from "@/lib/auth/session";
+import { siteOrigin } from "@/lib/origin";
 import { getMyTeams } from "@/lib/teams/queries";
 import {
   addDrillToTraining,
@@ -40,17 +40,15 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
   const user = await requireCoach();
   await requireOwnedTraining(id);
 
-  const [training, items, addable, teams, h] = await Promise.all([
+  const [training, items, addable, teams, origin] = await Promise.all([
     getTraining(id),
     getTrainingItems(id),
     getAddableDrills(user.id, id),
     getMyTeams(user.id),
-    headers(),
+    siteOrigin(),
   ]);
 
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  const link = proto + "://" + host + "/t/" + training.shareId;
+  const link = origin + "/t/" + training.shareId;
   const coached = teams.filter((t) => t.role === "coach");
 
   return (
