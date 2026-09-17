@@ -1,0 +1,1 @@
+ALTER TABLE "drill_types" ADD COLUMN "template" jsonb;

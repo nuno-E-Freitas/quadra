@@ -8,7 +8,8 @@ import { db } from "@/db";
 import { drills } from "@/db/schema";
 import { requireCoach } from "@/lib/auth/session";
 import { drillTypes } from "@/db/schema";
-import { DEFAULT_TITLE, newScene } from "@/lib/presets";
+import { DEFAULT_TITLE } from "@/lib/presets";
+import { sceneFromTemplate } from "@/lib/drills/template";
 import { getPitchDefaults } from "@/lib/settings/queries";
 import { validateScene, type SceneKind } from "@/lib/scene";
 
@@ -24,13 +25,15 @@ export async function createDrill(formData: FormData) {
 
   const rawType = String(formData.get("typeId") ?? "").trim();
   let typeId: string | null = null;
+  let template: unknown = null;
   if (rawType) {
     const [owned] = await db
-      .select({ id: drillTypes.id })
+      .select({ id: drillTypes.id, template: drillTypes.template })
       .from(drillTypes)
       .where(and(eq(drillTypes.id, rawType), eq(drillTypes.ownerId, user.id)))
       .limit(1);
     typeId = owned?.id ?? null;
+    template = owned?.template ?? null;
   }
 
   const [created] = await db
@@ -40,7 +43,7 @@ export async function createDrill(formData: FormData) {
       kind,
       typeId,
       title,
-      scene: newScene(kind, await getPitchDefaults(user.id)),
+      scene: sceneFromTemplate(template, kind, await getPitchDefaults(user.id)),
       shareId: nanoid(12),
     })
     .returning({ id: drills.id });

@@ -79,6 +79,13 @@ export const drillTypes = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     name: text().notNull(),
+    /**
+     * The setup every play of this type starts from — a whole scene with only
+     * its first step, stored the same way a drill is and parsed the same way on
+     * the way out. A defence always begins in the same shape; typing it out
+     * again for every play is work the type already knows how to save.
+     */
+    template: jsonb().$type<Scene>(),
     /** Where it sits in the coach's own list, not alphabetical order. */
     position: integer().notNull().default(0),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),

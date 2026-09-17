@@ -4,7 +4,6 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { drillTypes, drills } from "@/db/schema";
 import { requireCoach } from "@/lib/auth/session";
-import { createDrill } from "@/lib/drills/actions";
 import { listDrillTypes } from "@/lib/drills/types";
 import styles from "../app.module.css";
 
@@ -75,33 +74,12 @@ export default async function DrillsPage({
           <span className="eyebrow">Biblioteca</span>
           <h1>As tuas jogadas e exercícios</h1>
         </div>
+        <Link className="btn btn-primary" href="/drills/new">
+          Nova jogada
+        </Link>
       </div>
 
-      <section className={styles.section} style={{ marginTop: 0 }}>
-        <form action={createDrill} className={styles.inline}>
-          <input
-            name="title"
-            placeholder="Nome da jogada"
-            maxLength={120}
-            aria-label="Nome da jogada"
-            style={{ minWidth: 190 }}
-          />
-          <select name="typeId" defaultValue={active && active !== UNTYPED ? active : ""} aria-label="Tipo">
-            <option value="">sem tipo</option>
-            {types.map((type) => (
-              <option key={type.id} value={type.id}>
-                {type.name}
-              </option>
-            ))}
-          </select>
-          <button className="btn btn-primary" type="submit" name="kind" value="play">
-            Nova jogada
-          </button>
-          <button className="btn" type="submit" name="kind" value="training">
-            Novo exercício
-          </button>
-        </form>
-      </section>
+
 
       <section className={styles.section}>
         <div className={styles.inline}>
@@ -124,7 +102,7 @@ export default async function DrillsPage({
           <p>
             {active
               ? "Nenhuma jogada está classificada assim. Abre uma jogada para lhe dar um tipo."
-              : "Começa por uma jogada: dá-lhe um nome, coloca os jogadores na quadra, arrasta-os, e cada movimento deixa o seu trajeto marcado. Depois envia o link à tua equipa."}
+              : "Começa por uma jogada: escolhes o tipo, dás-lhe um nome, e o quadro abre com a equipa no sítio. Arrasta, e cada movimento deixa o seu trajeto marcado. Depois envia o link à tua equipa."}
           </p>
         </div>
       ) : (
