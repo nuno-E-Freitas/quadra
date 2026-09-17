@@ -11,7 +11,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
       <div className={styles.panel}>
         <Wordmark size={1.15} />
         <p className={styles.tagline}>
-          A futsal tactics board that remembers the movement — draw a play, send a link.
+          Um quadro tático de futsal que se lembra do movimento — desenha uma jogada, envia um link.
         </p>
         {children}
       </div>

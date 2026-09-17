@@ -21,6 +21,16 @@ type DrillProps = {
 /** Below this, a drag was a tap: select the token instead of recording a path. */
 const TAP_THRESHOLD_M = 0.8;
 
+/** Sides and piece kinds are stored in English; only their display is Portuguese. */
+const SIDE_PT: Record<string, string> = { home: "nossa", away: "adversária", neutral: "neutra" };
+const KIND_PT: Record<string, string> = {
+  player: "jogador",
+  ball: "bola",
+  cone: "cone",
+  marker: "marca",
+  goal: "baliza",
+};
+
 export function Editor({ drill }: { drill: DrillProps }) {
   /**
    * The store is a module singleton, and zustand serves SSR from
@@ -204,18 +214,18 @@ export function Editor({ drill }: { drill: DrillProps }) {
           className={styles.titleInput}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          aria-label="Title"
+          aria-label="Título"
           maxLength={120}
         />
         <div className={styles.rowRight}>
           <span className={`${styles.status} ${saveError ? styles.statusError : ""}`}>
-            {saveError ? "Not saved" : !touched ? "" : dirty ? "Saving…" : "Saved"}
+            {saveError ? "Por guardar" : !touched ? "" : dirty ? "A guardar…" : "Guardado"}
           </span>
-          <button className="btn" type="button" onClick={() => undo()} disabled={!canUndo} title="Undo (Ctrl+Z)">
-            Undo
+          <button className="btn" type="button" onClick={() => undo()} disabled={!canUndo} title="Anular (Ctrl+Z)">
+            Anular
           </button>
-          <button className="btn" type="button" onClick={() => redo()} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
-            Redo
+          <button className="btn" type="button" onClick={() => redo()} disabled={!canRedo} title="Refazer (Ctrl+Shift+Z)">
+            Refazer
           </button>
           <button
             className="btn"
@@ -230,10 +240,10 @@ export function Editor({ drill }: { drill: DrillProps }) {
               }
             }}
           >
-            {copied ? "Link copied" : "Copy share link"}
+            {copied ? "Link copiado" : "Copiar link"}
           </button>
           <Link className="btn" href={`/b/${drill.shareId}`} target="_blank">
-            Open
+            Abrir
           </Link>
         </div>
       </div>
@@ -242,7 +252,7 @@ export function Editor({ drill }: { drill: DrillProps }) {
 
       <div className={styles.board}>
         <div className={styles.bar}>
-          <div className={styles.segs} role="group" aria-label="Line type">
+          <div className={styles.segs} role="group" aria-label="Tipo de traço">
             {moveKinds.map((kind) => (
               <button
                 key={kind}
@@ -263,19 +273,19 @@ export function Editor({ drill }: { drill: DrillProps }) {
               onClick={() => (playback.playing ? playback.stop() : playback.play())}
               disabled={scene.steps.length < 2}
             >
-              {playback.playing ? "■ Stop" : "▶ Play the move"}
+              {playback.playing ? "■ Parar" : "▶ Ver o movimento"}
             </button>
             <button
               className="btn"
               type="button"
               onClick={playback.playStep}
               disabled={!playback.hasNextStep}
-              title="Play the next step and stop on it"
+              title="Correr o passo seguinte e parar nele"
             >
-              ▸| Step
+              ▸| Passo
             </button>
             <button className="btn" type="button" onClick={() => playback.reset()} disabled={playback.elapsed === 0}>
-              Reset
+              Repor
             </button>
           </div>
         </div>
@@ -305,12 +315,12 @@ export function Editor({ drill }: { drill: DrillProps }) {
               step={10}
               value={Math.round(playback.elapsed)}
               onChange={(e) => playback.seek(Number(e.target.value))}
-              aria-label="Scrub playback"
+              aria-label="Percorrer"
             />
             <span className={styles.count}>
               {(playback.elapsed / 1000).toFixed(1)}s / {(playback.total / 1000).toFixed(1)}s
             </span>
-            <div className={styles.segs} role="group" aria-label="Speed">
+            <div className={styles.segs} role="group" aria-label="Velocidade">
               {SPEEDS.map((rate) => (
                 <button
                   key={rate}
@@ -329,14 +339,14 @@ export function Editor({ drill }: { drill: DrillProps }) {
         <p className={styles.hint}>
           {stepIndex === 0 ? (
             <>
-              <b>Setup.</b> Drag tokens to place them; tap one to recolour or relabel it. Add a step to
-              start recording movement.
+              <b>Posição inicial.</b> Arrasta as peças para as colocar; toca numa para mudar a cor ou o
+              número. Junta um passo para começar a gravar movimento.
             </>
           ) : (
             <>
-              <b>Step {stepIndex}.</b> Drag a token to draw its path as a{" "}
-              <b>{MOVE_STYLE[tool].label.toLowerCase()}</b>. Dragging the same token again replaces its
-              path. Tap to select.
+              <b>Passo {stepIndex}.</b> Arrasta uma peça para desenhar o trajeto como{" "}
+              <b>{MOVE_STYLE[tool].label.toLowerCase()}</b>. Arrastar a mesma peça outra vez substitui o
+              trajeto. Toca para selecionar.
             </>
           )}
         </p>
@@ -344,7 +354,7 @@ export function Editor({ drill }: { drill: DrillProps }) {
 
       <div className={styles.panels}>
         <section className={styles.panel}>
-          <h2>Steps</h2>
+          <h2>Passos</h2>
           <div className={styles.steps}>
             {scene.steps.map((s, index) => (
               <button
@@ -357,29 +367,29 @@ export function Editor({ drill }: { drill: DrillProps }) {
                   useEditor.getState().setStep(index);
                 }}
               >
-                {index === 0 ? "Setup" : `Step ${index}`}
+                {index === 0 ? "Início" : `Passo ${index}`}
                 {index > 0 ? <span className={styles.count}>{s.moves.length}</span> : null}
               </button>
             ))}
             <button className="btn" type="button" onClick={() => useEditor.getState().addStep()}>
-              + Add step
+              + Juntar passo
             </button>
           </div>
 
           {stepIndex > 0 ? (
             <div className={styles.noteRow}>
               <div className="field">
-                <label htmlFor="note">Note</label>
+                <label htmlFor="note">Nota</label>
                 <input
                   id="note"
                   value={step.note ?? ""}
-                  placeholder="ala fixes the marker before cutting"
+                  placeholder="o ala fixa o marcador antes de cortar"
                   maxLength={280}
                   onChange={(e) => useEditor.getState().setStepNote(stepIndex, e.target.value)}
                 />
               </div>
               <div className={`field ${styles.duration}`}>
-                <label htmlFor="duration">Seconds</label>
+                <label htmlFor="duration">Segundos</label>
                 <input
                   id="duration"
                   type="number"
@@ -391,7 +401,7 @@ export function Editor({ drill }: { drill: DrillProps }) {
                 />
               </div>
               <button className="btn" type="button" onClick={() => useEditor.getState().clearStepMoves()}>
-                Clear paths
+                Limpar trajetos
               </button>
               <button
                 className="btn"
@@ -399,14 +409,14 @@ export function Editor({ drill }: { drill: DrillProps }) {
                 onClick={() => useEditor.getState().deleteStep(stepIndex)}
                 disabled={scene.steps.length <= 1}
               >
-                Delete step
+                Apagar passo
               </button>
             </div>
           ) : null}
         </section>
 
         <section className={styles.panel}>
-          <h2>Roster · {profile.caption}</h2>
+          <h2>Plantel · {profile.caption}</h2>
           <div className={styles.roster}>
             {scene.tokens.map((token) => (
               <button
@@ -418,7 +428,7 @@ export function Editor({ drill }: { drill: DrillProps }) {
               >
                 <i className={styles.dot} style={{ background: token.color }} />
                 <span>
-                  {token.kind === "player" ? `${token.label || "–"} · ${token.side}` : token.kind}
+                  {token.kind === "player" ? `${token.label || "–"} · ${SIDE_PT[token.side]}` : KIND_PT[token.kind]}
                 </span>
               </button>
             ))}
@@ -426,10 +436,10 @@ export function Editor({ drill }: { drill: DrillProps }) {
 
           <div className={styles.inline}>
             <button className="btn" type="button" onClick={() => useEditor.getState().addToken("player", "home")}>
-              + Home
+              + Nossa
             </button>
             <button className="btn" type="button" onClick={() => useEditor.getState().addToken("player", "away")}>
-              + Away
+              + Adversária
             </button>
             {profile.allowsProps ? (
               <button className="btn" type="button" onClick={() => useEditor.getState().addToken("cone", "neutral")}>
@@ -440,12 +450,12 @@ export function Editor({ drill }: { drill: DrillProps }) {
 
           {selected ? (
             <>
-              <h2>Selected · {selected.kind}</h2>
+              <h2>Selecionado · {KIND_PT[selected.kind]}</h2>
               {selected.kind === "player" ? (
                 <>
                   <div className={styles.inline}>
                     <div className={`field ${styles.labelInput}`}>
-                      <label htmlFor="label">Label</label>
+                      <label htmlFor="label">Número</label>
                       <input
                         id="label"
                         value={selected.label}
@@ -461,7 +471,7 @@ export function Editor({ drill }: { drill: DrillProps }) {
                         type="button"
                         className={styles.sw}
                         style={{ background: color }}
-                        aria-label={`Colour ${color}`}
+                        aria-label={`Cor ${color}`}
                         aria-pressed={selected.color.toLowerCase() === color.toLowerCase()}
                         onClick={() => useEditor.getState().setTokenColor(selected.id, color)}
                       />
@@ -472,17 +482,17 @@ export function Editor({ drill }: { drill: DrillProps }) {
 
               {selected.kind === "ball" ? (
                 <div className={styles.inline}>
-                  <span className={styles.count}>Carried by</span>
+                  <span className={styles.count}>Levada por</span>
                   <select
                     value={scene.attachments?.[selected.id] ?? ""}
                     onChange={(e) => useEditor.getState().attachBall(selected.id, e.target.value || null)}
                   >
-                    <option value="">nobody</option>
+                    <option value="">ninguém</option>
                     {scene.tokens
                       .filter((t) => t.kind === "player")
                       .map((t) => (
                         <option key={t.id} value={t.id}>
-                          {t.label || t.id} · {t.side}
+                          {t.label || t.id} · {SIDE_PT[t.side]}
                         </option>
                       ))}
                   </select>
@@ -490,7 +500,7 @@ export function Editor({ drill }: { drill: DrillProps }) {
               ) : null}
 
               <button className="btn" type="button" onClick={() => useEditor.getState().removeToken(selected.id)}>
-                Remove token
+                Remover peça
               </button>
             </>
           ) : null}

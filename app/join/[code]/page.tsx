@@ -9,7 +9,7 @@ import { acceptInvite } from "@/lib/teams/actions";
 import styles from "@/app/(auth)/auth.module.css";
 
 export const metadata: Metadata = {
-  title: "Join a squad · Quadra",
+  title: "Entrar numa equipa · Quadra",
   robots: { index: false, follow: false },
 };
 
@@ -47,45 +47,46 @@ export default async function JoinPage({ params }: { params: Promise<{ code: str
         {!invite ? (
           <>
             <p className={styles.tagline}>
-              This join link has expired or was revoked. Ask your coach for a new one.
+              Este link de adesão expirou ou foi revogado. Pede um novo ao teu treinador.
             </p>
             <Link className="btn" href="/login">
-              Sign in
+              Entrar
             </Link>
           </>
         ) : already ? (
           <>
             <p className={styles.tagline}>
-              You are already in <b>{invite.team}</b>, as {already.role}.
+              Já estás em <b>{invite.team}</b>, como {already.role === "coach" ? "treinador" : "jogador"}.
             </p>
             <Link className="btn btn-primary" href={already.role === "coach" ? "/drills" : "/feed"}>
-              Go to your trainings
+              Ir para os teus treinos
             </Link>
           </>
         ) : user ? (
           <>
             <p className={styles.tagline}>
-              You have been invited to join <b>{invite.team}</b> as {invite.role}.
+              Foste convidado para entrar em <b>{invite.team}</b> como{" "}
+              {invite.role === "coach" ? "treinador" : "jogador"}.
             </p>
             <form action={acceptInvite}>
               <input type="hidden" name="code" value={code} />
               <button className="btn btn-primary" type="submit">
-                Join {invite.team}
+                Entrar em {invite.team}
               </button>
             </form>
           </>
         ) : (
           <>
             <p className={styles.tagline}>
-              <b>{invite.team}</b> invited you to see their trainings and plays. Create an account to
-              join — it takes a moment and you keep everything in one place.
+              O <b>{invite.team}</b> convidou-te para veres os treinos e as jogadas. Cria uma conta para
+              entrares — é rápido e fica tudo no mesmo sítio.
             </p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <Link className="btn btn-primary" href={`/signup?invite=${code}`}>
-                Create account
+                Criar conta
               </Link>
               <Link className="btn" href={`/login?invite=${code}`}>
-                I already have one
+                Já tenho conta
               </Link>
             </div>
           </>

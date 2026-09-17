@@ -18,13 +18,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <nav className={styles.nav}>
           {coach ? (
             <>
-              <Link href="/drills">Library</Link>
-              <Link href="/trainings">Trainings</Link>
-              <Link href="/team">Squads</Link>
+              <Link href="/drills">Biblioteca</Link>
+              <Link href="/trainings">Treinos</Link>
+              <Link href="/team">Equipas</Link>
             </>
           ) : null}
-          <Link href="/feed">{coach ? "Player view" : "My trainings"}</Link>
-          {user.role === "admin" ? <Link href="/admin/users">Accounts</Link> : null}
+          <Link href="/feed">{coach ? "Vista do jogador" : "Os meus treinos"}</Link>
+          {user.role === "admin" ? <Link href="/admin/users">Contas</Link> : null}
         </nav>
 
         <div className={styles.right}>
@@ -33,7 +33,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </span>
           <form action={logout}>
             <button className="btn" type="submit">
-              Sign out
+              Sair
             </button>
           </form>
         </div>

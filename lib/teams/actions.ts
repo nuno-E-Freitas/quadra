@@ -11,7 +11,7 @@ import { requireCoach, requireUser } from "@/lib/auth/session";
 import { requireTeamCoach } from "./queries";
 
 const DAY = 86_400_000;
-const teamName = z.string().trim().min(1, "Give the squad a name.").max(80);
+const teamName = z.string().trim().min(1, "Dá um nome à equipa.").max(80);
 const teamRole = z.enum(TEAM_ROLES);
 
 export async function createTeam(formData: FormData) {
@@ -92,7 +92,7 @@ export async function joinTeam(code: string) {
     .from(invites)
     .where(and(eq(invites.code, code), gt(invites.expiresAt, new Date())))
     .limit(1);
-  if (!invite) return { ok: false as const, error: "That invite has expired or does not exist." };
+  if (!invite) return { ok: false as const, error: "Este convite expirou ou não existe." };
 
   await db
     .insert(memberships)

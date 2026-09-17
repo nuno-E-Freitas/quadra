@@ -7,7 +7,7 @@ import { requireCoach } from "@/lib/auth/session";
 import { createDrill } from "@/lib/drills/actions";
 import styles from "../app.module.css";
 
-export const metadata: Metadata = { title: "Library · Quadra" };
+export const metadata: Metadata = { title: "Biblioteca · Quadra" };
 
 export default async function DrillsPage() {
   const user = await requireCoach();
@@ -29,20 +29,20 @@ export default async function DrillsPage() {
     <>
       <div className={styles.pageHead}>
         <div>
-          <span className="eyebrow">Library</span>
-          <h1>Your plays and drills</h1>
+          <span className="eyebrow">Biblioteca</span>
+          <h1>As tuas jogadas e exercícios</h1>
         </div>
         <div className={styles.newButtons}>
           <form action={createDrill}>
             <input type="hidden" name="kind" value="play" />
             <button className="btn btn-primary" type="submit">
-              New play
+              Nova jogada
             </button>
           </form>
           <form action={createDrill}>
             <input type="hidden" name="kind" value="training" />
             <button className="btn" type="submit">
-              New training
+              Novo exercício
             </button>
           </form>
         </div>
@@ -50,10 +50,10 @@ export default async function DrillsPage() {
 
       {rows.length === 0 ? (
         <div className={styles.empty}>
-          <b>Nothing saved yet</b>
+          <b>Ainda não há nada guardado</b>
           <p>
-            Start with a play: place players on the court, drag them, and every move leaves its path
-            behind. Then send the link to your squad.
+            Começa por uma jogada: coloca os jogadores na quadra, arrasta-os, e cada movimento deixa o
+            seu trajeto marcado. Depois envia o link à tua equipa.
           </p>
         </div>
       ) : (
@@ -63,11 +63,11 @@ export default async function DrillsPage() {
             return (
               <Link key={row.id} href={`/drills/${row.id}`} className={styles.card}>
                 <span className={styles.meta}>
-                  {row.kind} · {steps} step{steps === 1 ? "" : "s"}
+                  {row.kind === "play" ? "jogada" : "treino"} · {steps} passo{steps === 1 ? "" : "s"}
                 </span>
                 <b>{row.title}</b>
                 <span className={styles.meta}>
-                  {row.updatedAt.toLocaleDateString(undefined, {
+                  {row.updatedAt.toLocaleDateString("pt-PT", {
                     day: "2-digit",
                     month: "short",
                     year: "numeric",

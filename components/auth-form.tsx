@@ -14,7 +14,7 @@ export function AuthForm({ mode, invite }: { mode: "login" | "signup"; invite?: 
   return (
     <>
       <form className={styles.card} action={formAction}>
-        <h1>{isSignup ? "Create your account" : "Sign in"}</h1>
+        <h1>{isSignup ? "Criar conta" : "Entrar"}</h1>
 
         {state.error ? (
           <p className="alert" role="alert">
@@ -26,7 +26,7 @@ export function AuthForm({ mode, invite }: { mode: "login" | "signup"; invite?: 
 
         {isSignup ? (
           <div className="field">
-            <label htmlFor="name">Name</label>
+            <label htmlFor="name">Nome</label>
             <input id="name" name="name" autoComplete="name" required maxLength={60} />
           </div>
         ) : null}
@@ -44,7 +44,7 @@ export function AuthForm({ mode, invite }: { mode: "login" | "signup"; invite?: 
         </div>
 
         <div className="field">
-          <label htmlFor="password">Password</label>
+          <label htmlFor="password">Palavra-passe</label>
           <input
             id="password"
             name="password"
@@ -57,20 +57,20 @@ export function AuthForm({ mode, invite }: { mode: "login" | "signup"; invite?: 
         </div>
 
         <button className="btn btn-primary" type="submit" disabled={pending}>
-          {pending ? "One moment…" : isSignup ? "Create account" : "Sign in"}
+          {pending ? "Um momento…" : isSignup ? "Criar conta" : "Entrar"}
         </button>
       </form>
 
       <p className={styles.alt}>
         {isSignup ? (
           <>
-            Already have an account?{" "}
-            <Link href={invite ? `/login?invite=${invite}` : "/login"}>Sign in</Link>
+            Já tens conta?{" "}
+            <Link href={invite ? `/login?invite=${invite}` : "/login"}>Entrar</Link>
           </>
         ) : (
           <>
-            No account yet?{" "}
-            <Link href={invite ? `/signup?invite=${invite}` : "/signup"}>Create one</Link>
+            Ainda não tens conta?{" "}
+            <Link href={invite ? `/signup?invite=${invite}` : "/signup"}>Cria uma</Link>
           </>
         )}
       </p>

@@ -20,7 +20,7 @@ export function PublishPanel({
 
   return (
     <section className={styles.section}>
-      <h2>Publish to a squad</h2>
+      <h2>Publicar para uma equipa</h2>
       <div className={styles.rows}>
         {teams.map((team) => {
           const on = live.has(team.id);
@@ -29,14 +29,14 @@ export function PublishPanel({
               <div className={styles.rowMain}>
                 <b>{team.name}</b>
                 <span className={styles.meta}>
-                  {on ? "in every player's trainings" : "not published"}
+                  {on ? "nos treinos de todos os jogadores" : "não publicado"}
                 </span>
               </div>
               <form action={on ? unpublishDrill : publishDrill}>
                 <input type="hidden" name="drillId" value={drillId} />
                 <input type="hidden" name="teamId" value={team.id} />
                 <button className={on ? "btn" : "btn btn-primary"} type="submit">
-                  {on ? "Unpublish" : "Publish"}
+                  {on ? "Retirar" : "Publicar"}
                 </button>
               </form>
             </div>

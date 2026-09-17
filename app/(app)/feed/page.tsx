@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth/session";
 import { getFeed } from "@/lib/teams/queries";
 import styles from "../app.module.css";
 
-export const metadata: Metadata = { title: "My trainings · Quadra" };
+export const metadata: Metadata = { title: "Os meus treinos · Quadra" };
 
 /** The player's home. Everything a coach has published to a squad they are in. */
 export default async function FeedPage() {
@@ -15,17 +15,17 @@ export default async function FeedPage() {
     <>
       <div className={styles.pageHead}>
         <div>
-          <span className="eyebrow">For you</span>
-          <h1>Your trainings and plays</h1>
+          <span className="eyebrow">Para ti</span>
+          <h1>Os teus treinos e jogadas</h1>
         </div>
       </div>
 
       {rows.length === 0 ? (
         <div className={styles.empty}>
-          <b>Nothing published yet</b>
+          <b>Ainda não há nada publicado</b>
           <p>
-            When your coach publishes a play or a training to your squad, it appears here. Tap one to
-            watch where you go and where the ball goes.
+            Quando o teu treinador publicar uma jogada ou um treino para a tua equipa, aparece aqui.
+            Toca numa para veres para onde vais tu e para onde vai a bola.
           </p>
         </div>
       ) : (
@@ -35,11 +35,12 @@ export default async function FeedPage() {
             return (
               <Link key={row.id} href={`/b/${row.shareId}`} className={styles.card}>
                 <span className={styles.meta}>
-                  {row.teamName} · {row.kind} · {steps} step{steps === 1 ? "" : "s"}
+                  {row.teamName} · {row.kind === "play" ? "jogada" : "treino"} · {steps} passo
+                  {steps === 1 ? "" : "s"}
                 </span>
                 <b>{row.title}</b>
                 <span className={styles.meta}>
-                  {row.publishedAt.toLocaleDateString(undefined, {
+                  {row.publishedAt.toLocaleDateString("pt-PT", {
                     day: "2-digit",
                     month: "short",
                     year: "numeric",

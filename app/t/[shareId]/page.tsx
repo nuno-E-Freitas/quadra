@@ -40,12 +40,12 @@ export default async function TrainingSharePage({
     <main className={shell.shell}>
       <header className={shell.head}>
         <span className="eyebrow">
-          {training.teamName ? training.teamName + " · training" : "training"}
+          {training.teamName ? training.teamName + " · treino" : "treino"}
         </span>
         <h1>{training.title}</h1>
         {training.scheduledFor ? (
           <span className={styles.num}>
-            {training.scheduledFor.toLocaleDateString(undefined, {
+            {training.scheduledFor.toLocaleDateString("pt-PT", {
               weekday: "long",
               day: "2-digit",
               month: "long",
@@ -56,7 +56,7 @@ export default async function TrainingSharePage({
       </header>
 
       {training.items.length === 0 ? (
-        <p className={styles.intro}>Your coach has not added anything to this session yet.</p>
+        <p className={styles.intro}>O teu treinador ainda não juntou nada a esta sessão.</p>
       ) : (
         <div className={styles.list}>
           {training.items.map((item, i) => {
@@ -73,12 +73,13 @@ export default async function TrainingSharePage({
 
                 <div className={styles.body}>
                   <span className={styles.num}>
-                    {i + 1} · {item.kind} · {steps} step{steps === 1 ? "" : "s"}
+                    {i + 1} · {item.kind === "play" ? "jogada" : "treino"} · {steps} passo
+                    {steps === 1 ? "" : "s"}
                   </span>
                   <h2>{item.title}</h2>
                   {item.note ? <p className={styles.note}>{item.note}</p> : null}
                   <Link className={"btn btn-primary " + styles.open} href={"/b/" + item.shareId}>
-                    Watch it
+                    Ver
                   </Link>
                 </div>
               </article>

@@ -61,4 +61,4 @@ export function newScene(kind: SceneKind): Scene {
   };
 }
 
-export const DEFAULT_TITLE = { play: "Untitled play", training: "Untitled drill" } as const;
+export const DEFAULT_TITLE = { play: "Jogada sem nome", training: "Exercício sem nome" } as const;

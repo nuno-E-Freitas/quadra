@@ -5,7 +5,7 @@ import { createTeam } from "@/lib/teams/actions";
 import { getMyTeams } from "@/lib/teams/queries";
 import styles from "../app.module.css";
 
-export const metadata: Metadata = { title: "Squads · Quadra" };
+export const metadata: Metadata = { title: "Equipas · Quadra" };
 
 export default async function TeamsPage() {
   const user = await requireUser();
@@ -16,14 +16,14 @@ export default async function TeamsPage() {
     <>
       <div className={styles.pageHead}>
         <div>
-          <span className="eyebrow">Squads</span>
-          <h1>Who you coach, who you play for</h1>
+          <span className="eyebrow">Equipas</span>
+          <h1>Quem treinas, por quem jogas</h1>
         </div>
         {canCreate ? (
           <form action={createTeam} className={styles.inline}>
-            <input name="name" placeholder="Squad name" required maxLength={80} aria-label="Squad name" />
+            <input name="name" placeholder="Nome da equipa" required maxLength={80} aria-label="Nome da equipa" />
             <button className="btn btn-primary" type="submit">
-              New squad
+              Nova equipa
             </button>
           </form>
         ) : null}
@@ -31,11 +31,11 @@ export default async function TeamsPage() {
 
       {teams.length === 0 ? (
         <div className={styles.empty}>
-          <b>No squad yet</b>
+          <b>Ainda não há equipa</b>
           <p>
             {canCreate
-              ? "Create a squad, then send its join link to your players. Anything you publish to the squad lands in their trainings."
-              : "Once a coach sends you a join link, the squad shows up here."}
+              ? "Cria uma equipa e envia o link de adesão aos teus jogadores. Tudo o que publicares para a equipa aparece nos treinos deles."
+              : "Assim que um treinador te enviar um link de adesão, a equipa aparece aqui."}
           </p>
         </div>
       ) : (
@@ -45,15 +45,15 @@ export default async function TeamsPage() {
               <div className={styles.rowMain}>
                 <b>{team.name}</b>
                 <span className={styles.meta}>
-                  {team.members} member{team.members === 1 ? "" : "s"}
+                  {team.members} membro{team.members === 1 ? "" : "s"}
                 </span>
               </div>
               <span className={`${styles.pill} ${team.role === "coach" ? styles.pillOn : ""}`}>
-                {team.role}
+                {team.role === "coach" ? "treinador" : "jogador"}
               </span>
               {team.role === "coach" || user.role === "admin" ? (
                 <Link className="btn" href={`/team/${team.id}`}>
-                  Manage
+                  Gerir
                 </Link>
               ) : null}
             </div>

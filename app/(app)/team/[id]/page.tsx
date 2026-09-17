@@ -12,7 +12,7 @@ import {
 import { getTeamDetail, requireTeamCoach } from "@/lib/teams/queries";
 import styles from "../../app.module.css";
 
-export const metadata: Metadata = { title: "Squad · Quadra" };
+export const metadata: Metadata = { title: "Equipa · Quadra" };
 
 async function origin() {
   const h = await headers();
@@ -31,39 +31,39 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
     <>
       <div className={styles.pageHead}>
         <div>
-          <span className="eyebrow">Squad</span>
+          <span className="eyebrow">Equipa</span>
           <h1>{team.name}</h1>
         </div>
         <form action={renameTeam} className={styles.inline}>
           <input type="hidden" name="teamId" value={team.id} />
-          <input name="name" defaultValue={team.name} maxLength={80} aria-label="Squad name" />
+          <input name="name" defaultValue={team.name} maxLength={80} aria-label="Nome da equipa" />
           <button className="btn" type="submit">
-            Rename
+            Mudar nome
           </button>
         </form>
       </div>
 
       <section className={styles.section}>
-        <h2>Join links</h2>
+        <h2>Links de adesão</h2>
         <p className={styles.meta} style={{ marginBottom: 10, textTransform: "none", letterSpacing: 0 }}>
-          One link, reusable for 14 days — paste it in the squad&apos;s group chat. A player who signs up
-          through it joins as a player, with no library of their own.
+          Um link, reutilizável durante 14 dias — cola-o no grupo da equipa. Quem criar conta por ele
+          entra como jogador, sem biblioteca própria.
         </p>
 
         <form action={createInvite} className={styles.inline} style={{ marginBottom: 12 }}>
           <input type="hidden" name="teamId" value={team.id} />
-          <select name="role" defaultValue="player" aria-label="Invite as">
-            <option value="player">as player</option>
-            <option value="coach">as coach</option>
+          <select name="role" defaultValue="player" aria-label="Convidar como">
+            <option value="player">como jogador</option>
+            <option value="coach">como treinador</option>
           </select>
           <button className="btn btn-primary" type="submit">
-            New join link
+            Novo link de adesão
           </button>
         </form>
 
         {invites.length === 0 ? (
           <p className={styles.meta} style={{ textTransform: "none", letterSpacing: 0 }}>
-            No live invite. Make one when you are ready to add people.
+            Nenhum convite ativo. Cria um quando quiseres juntar pessoas.
           </p>
         ) : (
           <div className={styles.rows}>
@@ -72,14 +72,14 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
                 <div className={styles.rowMain}>
                   <span className={styles.code}>{`${base}/join/${invite.code}`}</span>
                   <span className={styles.meta}>
-                    {invite.role} · expires{" "}
-                    {invite.expiresAt.toLocaleDateString(undefined, { day: "2-digit", month: "short" })}
+                    {invite.role === "coach" ? "treinador" : "jogador"} · expira{" "}
+                    {invite.expiresAt.toLocaleDateString("pt-PT", { day: "2-digit", month: "short" })}
                   </span>
                 </div>
                 <form action={revokeInvite}>
                   <input type="hidden" name="code" value={invite.code} />
                   <button className="btn" type="submit">
-                    Revoke
+                    Revogar
                   </button>
                 </form>
               </div>
@@ -90,7 +90,7 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
 
       <section className={styles.section}>
         <h2>
-          Squad list <span className={styles.meta}>({roster.length})</span>
+          Plantel <span className={styles.meta}>({roster.length})</span>
         </h2>
         <div className={styles.rows}>
           {roster.map((member) => {
@@ -105,9 +105,9 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
                   <span className={styles.meta}>{member.email}</span>
                 </div>
 
-                {member.disabledAt ? <span className={styles.pill}>disabled</span> : null}
+                {member.disabledAt ? <span className={styles.pill}>desativado</span> : null}
                 <span className={`${styles.pill} ${member.role === "coach" ? styles.pillOn : ""}`}>
-                  {isOwner ? "owner" : member.role}
+                  {isOwner ? "dono" : member.role === "coach" ? "treinador" : "jogador"}
                 </span>
 
                 <div className={styles.rowActions}>
@@ -120,10 +120,10 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
                       placeholder="nº"
                       maxLength={4}
                       size={3}
-                      aria-label={`Shirt number for ${member.name}`}
+                      aria-label={`Número de ${member.name}`}
                     />
                     <button className="btn" type="submit">
-                      Set
+                      Definir
                     </button>
                   </form>
 
@@ -138,14 +138,14 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
                           value={member.role === "coach" ? "player" : "coach"}
                         />
                         <button className="btn" type="submit">
-                          Make {member.role === "coach" ? "player" : "coach"}
+                          Tornar {member.role === "coach" ? "jogador" : "treinador"}
                         </button>
                       </form>
                       <form action={removeMember}>
                         <input type="hidden" name="teamId" value={team.id} />
                         <input type="hidden" name="userId" value={member.userId} />
                         <button className="btn" type="submit">
-                          Remove
+                          Remover
                         </button>
                       </form>
                     </>
@@ -159,7 +159,7 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
 
       <p style={{ marginTop: 28 }}>
         <Link href="/team" className={styles.meta}>
-          ← All squads
+          ← Todas as equipas
         </Link>
       </p>
     </>

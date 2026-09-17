@@ -12,22 +12,22 @@ import { createSession, destroySession } from "./session";
 export type AuthState = { error: string | null };
 
 const email = z
-  .email("That does not look like an email address.")
+  .email("Isto não parece um endereço de email.")
   .max(254)
   .transform((v) => v.trim().toLowerCase());
 
 const password = z
   .string()
-  .min(8, "Use at least 8 characters.")
-  .max(MAX_PASSWORD_BYTES, `Keep it under ${MAX_PASSWORD_BYTES} characters.`);
+  .min(8, "Usa pelo menos 8 caracteres.")
+  .max(MAX_PASSWORD_BYTES, `Não passes dos ${MAX_PASSWORD_BYTES} caracteres.`);
 
 const signupSchema = z.object({
-  name: z.string().trim().min(1, "Tell us what to call you.").max(60),
+  name: z.string().trim().min(1, "Diz-nos como te chamar.").max(60),
   email,
   password,
 });
 
-const loginSchema = z.object({ email, password: z.string().min(1, "Enter your password.") });
+const loginSchema = z.object({ email, password: z.string().min(1, "Escreve a tua palavra-passe.") });
 
 export async function signup(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const parsed = signupSchema.safeParse({
@@ -36,7 +36,7 @@ export async function signup(_prev: AuthState, formData: FormData): Promise<Auth
     password: formData.get("password"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Check the form and try again." };
+    return { error: parsed.error.issues[0]?.message ?? "Verifica o formulário e tenta de novo." };
   }
 
   const passwordHash = await hashPassword(parsed.data.password);
@@ -70,7 +70,7 @@ export async function signup(_prev: AuthState, formData: FormData): Promise<Auth
     });
   } catch (err) {
     if (isUniqueViolation(err, "users_email_key")) {
-      return { error: "That email already has an account. Try signing in." };
+      return { error: "Esse email já tem conta. Experimenta entrar." };
     }
     throw err;
   }
@@ -94,7 +94,7 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
     password: formData.get("password"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Check the form and try again." };
+    return { error: parsed.error.issues[0]?.message ?? "Verifica o formulário e tenta de novo." };
   }
 
   const [user] = await db
@@ -114,10 +114,10 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
     parsed.data.password,
     user?.passwordHash ?? "$2b$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalidinv",
   );
-  if (!user || !ok) return { error: "Wrong email or password." };
+  if (!user || !ok) return { error: "Email ou palavra-passe errados." };
   // Checked only after the password, so the message cannot be used to find out
   // which addresses hold disabled accounts.
-  if (user.disabledAt) return { error: "That account has been disabled. Ask your coach." };
+  if (user.disabledAt) return { error: "Esta conta foi desativada. Fala com o teu treinador." };
 
   await createSession(user.id);
 

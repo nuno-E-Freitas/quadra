@@ -75,8 +75,8 @@ export type SceneKind = Scene["kind"];
  */
 export const PROFILES = {
   play: {
-    label: "Play",
-    caption: "5 v 5 · locked",
+    label: "Jogada",
+    caption: "5 x 5 · fixo",
     maxPlayers: 10,
     playersPerSide: 5,
     maxBalls: 1,
@@ -84,8 +84,8 @@ export const PROFILES = {
     freeColours: false,
   },
   training: {
-    label: "Training",
-    caption: "up to 20 players",
+    label: "Treino",
+    caption: "até 20 jogadores",
     maxPlayers: 20,
     playersPerSide: null,
     maxBalls: 4,
@@ -107,28 +107,28 @@ export function validateScene(input: unknown) {
   const balls = scene.tokens.filter((t) => t.kind === "ball");
 
   if (players.length > profile.maxPlayers) {
-    issues.push(`${profile.label} allows at most ${profile.maxPlayers} players.`);
+    issues.push(`${profile.label}: no máximo ${profile.maxPlayers} jogadores.`);
   }
   if (balls.length > profile.maxBalls) {
-    issues.push(`${profile.label} allows at most ${profile.maxBalls} ball(s).`);
+    issues.push(`${profile.label}: no máximo ${profile.maxBalls} bola(s).`);
   }
   if (profile.playersPerSide !== null) {
     for (const side of ["home", "away"] as const) {
       const n = players.filter((t) => t.side === side).length;
       if (n > profile.playersPerSide) {
-        issues.push(`A play allows ${profile.playersPerSide} players per side; ${side} has ${n}.`);
+        issues.push(`Uma jogada permite ${profile.playersPerSide} jogadores por equipa; ${side} tem ${n}.`);
       }
     }
   }
   if (!profile.allowsProps && scene.tokens.some((t) => t.kind === "cone" || t.kind === "goal")) {
-    issues.push("Cones and mini-goals belong to a training, not a play.");
+    issues.push("Cones e balizas pertencem a um treino, não a uma jogada.");
   }
 
   const ids = new Set(scene.tokens.map((t) => t.id));
-  if (ids.size !== scene.tokens.length) issues.push("Token ids must be unique.");
+  if (ids.size !== scene.tokens.length) issues.push("Os ids das peças têm de ser únicos.");
   for (const step of scene.steps) {
     for (const move of step.moves) {
-      if (!ids.has(move.tokenId)) issues.push(`Step ${step.id} moves unknown token ${move.tokenId}.`);
+      if (!ids.has(move.tokenId)) issues.push(`O passo ${step.id} move uma peça desconhecida: ${move.tokenId}.`);
     }
   }
 

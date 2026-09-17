@@ -32,16 +32,16 @@ export function Player({ scene, title }: { scene: Scene; title: string }) {
               type="button"
               onClick={() => (playback.playing ? playback.stop() : playback.play())}
             >
-              {playback.playing ? "■ Pause" : playback.elapsed >= playback.total ? "▶ Again" : "▶ Play"}
+              {playback.playing ? "■ Parar" : playback.elapsed >= playback.total ? "▶ De novo" : "▶ Ver"}
             </button>
             <button
               className="btn"
               type="button"
               onClick={playback.playStep}
               disabled={!playback.hasNextStep}
-              title="Play the next step and stop"
+              title="Correr o passo seguinte e parar"
             >
-              ▸| Step
+              ▸| Passo
             </button>
             <input
               className={styles.scrub}
@@ -51,9 +51,9 @@ export function Player({ scene, title }: { scene: Scene; title: string }) {
               step={10}
               value={Math.round(playback.elapsed)}
               onChange={(e) => playback.seek(Number(e.target.value))}
-              aria-label="Scrub playback"
+              aria-label="Percorrer"
             />
-            <div className={styles.segs} role="group" aria-label="Speed">
+            <div className={styles.segs} role="group" aria-label="Velocidade">
               {SPEEDS.map((rate) => (
                 <button
                   key={rate}
@@ -70,17 +70,17 @@ export function Player({ scene, title }: { scene: Scene; title: string }) {
           <p className={styles.hint}>
             {step?.note ? (
               <>
-                <b>Step {playback.activeStep}.</b> {step.note}
+                <b>Passo {playback.activeStep}.</b> {step.note}
               </>
             ) : (
               <>
-                {scene.steps.length - 1} step{scene.steps.length === 2 ? "" : "s"} · tap play to watch it again
+                {scene.steps.length - 1} passo{scene.steps.length === 2 ? "" : "s"} · toca em ver para repetir
               </>
             )}
           </p>
         </>
       ) : (
-        <p className={styles.hint}>This one is a setup only — no movement recorded yet.</p>
+        <p className={styles.hint}>Esta é só a posição inicial — ainda não há movimento gravado.</p>
       )}
     </div>
   );

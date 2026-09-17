@@ -19,7 +19,7 @@ import {
 } from "@/lib/trainings/queries";
 import styles from "../../app.module.css";
 
-export const metadata: Metadata = { title: "Training · Quadra" };
+export const metadata: Metadata = { title: "Treino · Quadra" };
 
 const inputStyle = {
   font: "inherit",
@@ -56,29 +56,29 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
     <>
       <div className={styles.pageHead}>
         <div>
-          <span className="eyebrow">Training</span>
+          <span className="eyebrow">Treino</span>
           <h1>{training.title}</h1>
         </div>
         <form action={deleteTraining}>
           <input type="hidden" name="id" value={training.id} />
           <button className="btn" type="submit">
-            Delete
+            Apagar
           </button>
         </form>
       </div>
 
       <section className={styles.section}>
-        <h2>The link you send</h2>
+        <h2>O link que envias</h2>
         <div className={styles.row}>
           <span className={styles.code + " " + styles.rowMain}>{link}</span>
           <Link className="btn" href={"/t/" + training.shareId}>
-            Open
+            Abrir
           </Link>
         </div>
       </section>
 
       <section className={styles.section}>
-        <h2>Details</h2>
+        <h2>Detalhes</h2>
         <form action={updateTraining} className={styles.rows}>
           <input type="hidden" name="id" value={training.id} />
           <div className={styles.row}>
@@ -87,17 +87,17 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
                 name="title"
                 defaultValue={training.title}
                 maxLength={120}
-                aria-label="Title"
+                aria-label="Título"
                 style={{ flex: 1 }}
               />
               <input
                 type="date"
                 name="scheduledFor"
                 defaultValue={isoDate(training.scheduledFor)}
-                aria-label="Date"
+                aria-label="Data"
               />
-              <select name="teamId" defaultValue={training.teamId ?? ""} aria-label="Squad">
-                <option value="">no squad</option>
+              <select name="teamId" defaultValue={training.teamId ?? ""} aria-label="Equipa">
+                <option value="">sem equipa</option>
                 {coached.map((team) => (
                   <option key={team.id} value={team.id}>
                     {team.name}
@@ -110,14 +110,14 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
             <input
               name="description"
               defaultValue={training.description ?? ""}
-              placeholder="What this session is for"
+              placeholder="Para que serve esta sessão"
               maxLength={2000}
-              aria-label="Description"
+              aria-label="Descrição"
               className={styles.rowMain}
               style={inputStyle}
             />
             <button className="btn btn-primary" type="submit">
-              Save details
+              Guardar detalhes
             </button>
           </div>
         </form>
@@ -125,12 +125,12 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
 
       <section className={styles.section}>
         <h2>
-          Running order <span className={styles.meta}>({items.length})</span>
+          Ordem de trabalhos <span className={styles.meta}>({items.length})</span>
         </h2>
 
         {items.length === 0 ? (
           <p className={styles.meta} style={{ textTransform: "none", letterSpacing: 0 }}>
-            Empty. Add a play or a drill below — the order here is the order the squad sees.
+            Vazio. Junta uma jogada ou um exercício abaixo — esta ordem é a que a equipa vê.
           </p>
         ) : (
           <div className={styles.rows}>
@@ -145,13 +145,13 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
                     <input
                       name="note"
                       defaultValue={item.note ?? ""}
-                      placeholder="What to say about this one"
+                      placeholder="O que dizer sobre este"
                       maxLength={500}
-                      aria-label={"Note for " + item.title}
+                      aria-label={"Nota para " + item.title}
                       style={{ flex: 1, minWidth: 160 }}
                     />
                     <button className="btn" type="submit">
-                      Note
+                      Nota
                     </button>
                   </form>
                 </div>
@@ -160,7 +160,7 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
                     <input type="hidden" name="id" value={training.id} />
                     <input type="hidden" name="drillId" value={item.drillId} />
                     <input type="hidden" name="direction" value="up" />
-                    <button className="btn" type="submit" disabled={i === 0} aria-label="Move up">
+                    <button className="btn" type="submit" disabled={i === 0} aria-label="Subir">
                       ↑
                     </button>
                   </form>
@@ -172,7 +172,7 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
                       className="btn"
                       type="submit"
                       disabled={i === items.length - 1}
-                      aria-label="Move down"
+                      aria-label="Descer"
                     >
                       ↓
                     </button>
@@ -181,7 +181,7 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
                     <input type="hidden" name="id" value={training.id} />
                     <input type="hidden" name="drillId" value={item.drillId} />
                     <button className="btn" type="submit">
-                      Remove
+                      Remover
                     </button>
                   </form>
                 </div>
@@ -192,10 +192,10 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
       </section>
 
       <section className={styles.section}>
-        <h2>Add from your library</h2>
+        <h2>Juntar da tua biblioteca</h2>
         {addable.length === 0 ? (
           <p className={styles.meta} style={{ textTransform: "none", letterSpacing: 0 }}>
-            Everything you have is already in this training.
+            Já tens tudo o que possuis dentro deste treino.
           </p>
         ) : (
           <div className={styles.rows}>
@@ -203,13 +203,13 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
               <div key={drill.id} className={styles.row}>
                 <div className={styles.rowMain}>
                   <b>{drill.title}</b>
-                  <span className={styles.meta}>{drill.kind}</span>
+                  <span className={styles.meta}>{drill.kind === "play" ? "jogada" : "treino"}</span>
                 </div>
                 <form action={addDrillToTraining}>
                   <input type="hidden" name="id" value={training.id} />
                   <input type="hidden" name="drillId" value={drill.id} />
                   <button className="btn" type="submit">
-                    Add
+                    Juntar
                   </button>
                 </form>
               </div>
@@ -220,7 +220,7 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
 
       <p style={{ marginTop: 28 }}>
         <Link href="/trainings" className={styles.meta}>
-          ← All trainings
+          ← Todos os treinos
         </Link>
       </p>
     </>

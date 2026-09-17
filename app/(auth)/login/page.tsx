@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { AuthForm } from "@/components/auth-form";
 
-export const metadata: Metadata = { title: "Sign in · Quadra" };
+export const metadata: Metadata = { title: "Entrar · Quadra" };
 
 export default async function LoginPage({
   searchParams,

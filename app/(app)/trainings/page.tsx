@@ -5,7 +5,7 @@ import { createTraining } from "@/lib/trainings/actions";
 import { getMyTrainings } from "@/lib/trainings/queries";
 import styles from "../app.module.css";
 
-export const metadata: Metadata = { title: "Trainings · Quadra" };
+export const metadata: Metadata = { title: "Treinos · Quadra" };
 
 export default async function TrainingsPage() {
   const user = await requireCoach();
@@ -15,23 +15,23 @@ export default async function TrainingsPage() {
     <>
       <div className={styles.pageHead}>
         <div>
-          <span className="eyebrow">Trainings</span>
-          <h1>Sessions your squad can open with one link</h1>
+          <span className="eyebrow">Treinos</span>
+          <h1>Sessões que a equipa abre com um só link</h1>
         </div>
         <form action={createTraining} className={styles.inline}>
-          <input name="title" placeholder="Tuesday session" maxLength={120} aria-label="Training title" />
+          <input name="title" placeholder="Sessão de terça" maxLength={120} aria-label="Título do treino" />
           <button className="btn btn-primary" type="submit">
-            New training
+            Novo treino
           </button>
         </form>
       </div>
 
       {rows.length === 0 ? (
         <div className={styles.empty}>
-          <b>No training built yet</b>
+          <b>Ainda não há treinos montados</b>
           <p>
-            A training is an ordered list of plays and drills with one share link. Instead of sending
-            eight links to the group chat, you send one.
+            Um treino é uma lista ordenada de jogadas e exercícios com um só link. Em vez de mandares
+            oito links para o grupo, mandas um.
           </p>
         </div>
       ) : (
@@ -43,15 +43,15 @@ export default async function TrainingsPage() {
                 <span className={styles.meta}>
                   {row.teamName ? `${row.teamName} · ` : ""}
                   {row.scheduledFor
-                    ? row.scheduledFor.toLocaleDateString(undefined, { day: "2-digit", month: "short" })
-                    : "no date"}
+                    ? row.scheduledFor.toLocaleDateString("pt-PT", { day: "2-digit", month: "short" })
+                    : "sem data"}
                 </span>
               </div>
               <Link className="btn" href={`/t/${row.shareId}`}>
-                Open link
+                Abrir link
               </Link>
               <Link className="btn btn-primary" href={`/trainings/${row.id}`}>
-                Edit
+                Editar
               </Link>
             </div>
           ))}

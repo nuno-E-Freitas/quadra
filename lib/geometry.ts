@@ -154,9 +154,9 @@ export function headAt(s: Sampled, length: number): { x: number; y: number; angl
 
 /** Stroke vocabulary — one style per move kind, standard coaching notation. */
 export const MOVE_STYLE: Record<MoveKind, { width: number; dash: string; head: number; wavy: boolean; label: string }> = {
-  run: { width: 0.26, dash: "", head: 1, wavy: false, label: "Run" },
-  dribble: { width: 0.26, dash: "", head: 1, wavy: true, label: "Dribble" },
-  pass: { width: 0.24, dash: "1.05 0.75", head: 1, wavy: false, label: "Pass" },
-  shot: { width: 0.42, dash: "", head: 1.35, wavy: false, label: "Shot" },
-  screen: { width: 0.26, dash: "", head: 0, wavy: false, label: "Screen" },
+  run: { width: 0.26, dash: "", head: 1, wavy: false, label: "Corrida" },
+  dribble: { width: 0.26, dash: "", head: 1, wavy: true, label: "Condução" },
+  pass: { width: 0.24, dash: "1.05 0.75", head: 1, wavy: false, label: "Passe" },
+  shot: { width: 0.42, dash: "", head: 1.35, wavy: false, label: "Remate" },
+  screen: { width: 0.26, dash: "", head: 0, wavy: false, label: "Bloqueio" },
 };

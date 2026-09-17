@@ -37,10 +37,10 @@ export async function saveDrill(
 ): Promise<SaveResult> {
   const user = await requireUser();
 
-  const title = input.title.trim().slice(0, 120) || "Untitled";
+  const title = input.title.trim().slice(0, 120) || "Sem nome";
   const validated = validateScene(input.scene);
   if (!validated.success) {
-    return { ok: false, error: "issues" in validated ? validated.issues.join(" ") : "That scene is not valid." };
+    return { ok: false, error: "issues" in validated ? validated.issues.join(" ") : "Este cenário não é válido." };
   }
 
   const updated = await db
@@ -49,7 +49,7 @@ export async function saveDrill(
     .where(and(eq(drills.id, id), eq(drills.ownerId, user.id)))
     .returning({ id: drills.id });
 
-  if (updated.length === 0) return { ok: false, error: "That drill is not yours to edit." };
+  if (updated.length === 0) return { ok: false, error: "Este exercício não é teu para editar." };
 
   revalidatePath("/drills");
   return { ok: true, savedAt: Date.now() };

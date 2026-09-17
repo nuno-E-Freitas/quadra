@@ -42,7 +42,7 @@ export default async function SharePage({ params }: { params: Promise<{ shareId:
   return (
     <main className={styles.shell}>
       <header className={styles.head}>
-        <span className="eyebrow">{row.kind}</span>
+        <span className="eyebrow">{row.kind === "play" ? "jogada" : "treino"}</span>
         <h1>{row.title}</h1>
       </header>
 

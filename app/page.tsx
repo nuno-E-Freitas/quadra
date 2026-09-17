@@ -3,5 +3,5 @@ import { getCurrentUser } from "@/lib/auth/session";
 
 export default async function Home() {
   const user = await getCurrentUser();
-  redirect(user ? "/drills" : "/login");
+  redirect(!user ? "/login" : user.role === "player" ? "/feed" : "/drills");
 }
