@@ -9,7 +9,7 @@ import { invites, memberships, users } from "@/db/schema";
 import { MAX_PASSWORD_BYTES, hashPassword, verifyPassword } from "./password";
 import { createSession, destroySession } from "./session";
 
-export type AuthState = { error: string | null };
+export type AuthState = { error: string | null; notice?: string | null };
 
 const email = z
   .email("Isto não parece um endereço de email.")
@@ -57,6 +57,12 @@ export async function signup(_prev: AuthState, formData: FormData): Promise<Auth
           email: parsed.data.email,
           passwordHash,
           role: invite?.role === "player" ? "player" : "coach",
+          /**
+           * Every account arrives switched off. Registration stays open — anyone
+           * may ask for an account — but asking is not the same as having one,
+           * and an admin decides which requests become people who can sign in.
+           */
+          disabledAt: new Date(),
         })
         .returning({ id: users.id });
 
@@ -75,8 +81,15 @@ export async function signup(_prev: AuthState, formData: FormData): Promise<Auth
     throw err;
   }
 
-  await createSession(userId);
-  redirect(invite?.role === "player" ? "/feed" : "/drills");
+  // Deliberately no session. The account exists but is refused at the session
+  // check, so signing them in here would hand them a live cookie that bounces
+  // them straight back to the login page with no explanation.
+  void userId;
+  return {
+    error: null,
+    notice:
+      "Conta criada. Falta um administrador ativá-la — depois disso entras com este email e palavra-passe.",
+  };
 }
 
 function findInvite(code: string) {
@@ -116,8 +129,12 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
   );
   if (!user || !ok) return { error: "Email ou palavra-passe errados." };
   // Checked only after the password, so the message cannot be used to find out
-  // which addresses hold disabled accounts.
-  if (user.disabledAt) return { error: "Esta conta foi desativada. Fala com o teu treinador." };
+  // which addresses hold inactive accounts. It covers both a new account waiting
+  // for approval and one an admin has switched off — from here they are the
+  // same thing, and the database does not distinguish them either.
+  if (user.disabledAt) {
+    return { error: "Esta conta ainda não está ativa. Fala com um administrador." };
+  }
 
   await createSession(user.id);
 

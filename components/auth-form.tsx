@@ -11,6 +11,22 @@ export function AuthForm({ mode, invite }: { mode: "login" | "signup"; invite?: 
   const isSignup = mode === "signup";
   const [state, formAction, pending] = useActionState(isSignup ? signup : login, initial);
 
+  // A created account is the end of this page's job: leaving the form up would
+  // invite them to submit it again and be told the email is taken.
+  if (state.notice) {
+    return (
+      <>
+        <div className={styles.card}>
+          <h1>Conta criada</h1>
+          <p>{state.notice}</p>
+        </div>
+        <p className={styles.alt}>
+          <Link href="/login">Ir para a entrada</Link>
+        </p>
+      </>
+    );
+  }
+
   return (
     <>
       <form className={styles.card} action={formAction}>

@@ -43,3 +43,24 @@ export async function setUserDisabled(formData: FormData) {
   revalidatePath("/admin/users");
   redirect("/admin/users");
 }
+
+/**
+ * Remove an account outright. This is not the mild option — disabling is. Every
+ * foreign key pointing at a user cascades, so it takes the person's drills,
+ * their play types, their trainings, and the squads they own; and a squad going
+ * takes every other player's membership of it with it. Disable unless the row
+ * genuinely should not exist.
+ */
+export async function deleteUser(formData: FormData) {
+  const admin = await requireAdmin();
+  const userId = String(formData.get("userId"));
+
+  // Same rule as the role and disable controls: an admin cannot remove
+  // themselves, which is what keeps the last one from emptying the building.
+  if (userId === admin.id) redirect("/admin/users");
+
+  await db.delete(users).where(eq(users.id, userId));
+
+  revalidatePath("/admin/users");
+  redirect("/admin/users");
+}

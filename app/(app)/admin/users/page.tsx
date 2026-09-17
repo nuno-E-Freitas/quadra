@@ -1,12 +1,32 @@
 import type { Metadata } from "next";
-import { asc, count, eq } from "drizzle-orm";
+import { asc, count, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { drills, users, USER_ROLES } from "@/db/schema";
+import { drills, teams, users, USER_ROLES } from "@/db/schema";
+import { ConfirmButton } from "@/components/confirm-button";
 import { requireAdmin } from "@/lib/auth/session";
-import { setUserDisabled, setUserRole } from "@/lib/admin/actions";
+import { deleteUser, setUserDisabled, setUserRole } from "@/lib/admin/actions";
 import styles from "../../app.module.css";
 
 export const metadata: Metadata = { title: "Contas · Quadra" };
+
+/** Names what actually goes, from the real counts — a vague warning teaches
+ *  people to click through warnings. */
+function removalWarning(name: string, drills: number, teams: number) {
+  const losses = [
+    drills + (drills === 1 ? " exercício" : " exercícios"),
+    teams + (teams === 1 ? " equipa que criou" : " equipas que criou"),
+    "os treinos e os tipos de jogada",
+  ].join(", ");
+
+  return (
+    "Remover " +
+    name +
+    " definitivamente? Leva consigo " +
+    losses +
+    (teams > 0 ? ", e com as equipas a inscrição de todos os outros jogadores" : "") +
+    ". Não há como voltar atrás — para lhe tirar o acesso sem destruir nada, usa Desativar."
+  );
+}
 
 export default async function AdminUsersPage() {
   const admin = await requireAdmin();
@@ -20,6 +40,7 @@ export default async function AdminUsersPage() {
       disabledAt: users.disabledAt,
       createdAt: users.createdAt,
       drills: count(drills.id),
+      teams: sql<number>`(select count(*)::int from ${teams} where ${teams.ownerId} = ${users.id})`,
     })
     .from(users)
     .leftJoin(drills, eq(drills.ownerId, users.id))
@@ -77,10 +98,23 @@ export default async function AdminUsersPage() {
                 <form action={setUserDisabled}>
                   <input type="hidden" name="userId" value={row.id} />
                   <input type="hidden" name="disable" value={row.disabledAt ? "0" : "1"} />
-                  <button className="btn" type="submit" disabled={self}>
+                  <button
+                    className={row.disabledAt ? "btn btn-primary" : "btn"}
+                    type="submit"
+                    disabled={self}
+                  >
                     {row.disabledAt ? "Ativar" : "Desativar"}
                   </button>
                 </form>
+
+                {self ? null : (
+                  <form action={deleteUser}>
+                    <input type="hidden" name="userId" value={row.id} />
+                    <ConfirmButton message={removalWarning(row.name, row.drills, row.teams)}>
+                      Remover
+                    </ConfirmButton>
+                  </form>
+                )}
               </div>
             </div>
           );
@@ -88,8 +122,11 @@ export default async function AdminUsersPage() {
       </div>
 
       <p className={styles.meta} style={{ marginTop: 20, textTransform: "none", letterSpacing: 0 }}>
-        Não podes mudar o teu próprio papel nem desativar-te — é isso que impede o último administrador
-        de trancar toda a gente fora.
+        Contas novas chegam desativadas: qualquer pessoa pode pedir conta em /signup, mas é aqui que
+        se decide quem passa a poder entrar. Desativar tira o acesso e guarda tudo; Remover apaga a
+        pessoa e o trabalho dela, incluindo as equipas que criou. Não podes mudar o teu próprio
+        papel, desativar-te nem remover-te — é isso que impede o último administrador de trancar
+        toda a gente fora.
       </p>
     </>
   );
