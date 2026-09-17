@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ConfirmButton } from "@/components/confirm-button";
 import { requireCoach } from "@/lib/auth/session";
 import {
   createDrillType,
@@ -63,9 +64,9 @@ export default async function TypesPage() {
               </form>
               <form action={deleteDrillType}>
                 <input type="hidden" name="id" value={type.id} />
-                <button className="btn" type="submit">
+                <ConfirmButton message={`Apagar o tipo "${type.name}"? As jogadas ficam sem tipo.`}>
                   Apagar
-                </button>
+                </ConfirmButton>
               </form>
             </div>
           ))}

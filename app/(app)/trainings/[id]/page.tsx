@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
+import { ConfirmButton } from "@/components/confirm-button";
 import { requireCoach } from "@/lib/auth/session";
 import { getMyTeams } from "@/lib/teams/queries";
 import {
@@ -61,9 +62,11 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
         </div>
         <form action={deleteTraining}>
           <input type="hidden" name="id" value={training.id} />
-          <button className="btn" type="submit">
+          <ConfirmButton
+            message={`Apagar o treino "${training.title}"? As jogadas não se perdem, mas o link deixa de funcionar.`}
+          >
             Apagar
-          </button>
+          </ConfirmButton>
         </form>
       </div>
 
