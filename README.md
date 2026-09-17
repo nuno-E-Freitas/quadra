@@ -8,7 +8,7 @@ a link and they see where they go and where the ball goes, in order.
 
 ```bash
 pnpm install
-cp .env.example .env   # then set DATABASE_URL
+[ -f .env ] || cp .env.example .env   # then set DATABASE_URL
 pnpm db:migrate        # apply db/migrations
 pnpm db:seed           # optional: demo@quadra.local / quadra-demo, plus one worked play
 pnpm dev
@@ -42,8 +42,11 @@ and cones. One editor, one renderer, one playback engine, one table.
 | [lib/geometry.ts](lib/geometry.ts) | Catmull-Rom curves, Ramer–Douglas–Peucker simplification, arc-length sampling, and the five-stroke notation vocabulary. |
 | [lib/editor-store.ts](lib/editor-store.ts) | Zustand + zundo. Holds the scene, the step you are editing, undo/redo. |
 | [components/board/](components/board/) | The SVG court, the board renderer, the playback loop, the editor, the read-only player. |
-| [db/schema.ts](db/schema.ts) | `users`, `sessions`, and one `drills` table with a JSONB `scene`. |
-| [lib/auth/](lib/auth/) | Email + password, bcrypt at cost 12, database-backed cookie sessions. |
+| [db/schema.ts](db/schema.ts) | Ten tables. `drills` carries the JSONB `scene`; the rest are accounts, squads and trainings. |
+| [lib/auth/](lib/auth/) | Email + password, bcrypt at cost 12, database-backed cookie sessions, roles. |
+| [lib/teams/](lib/teams/) | Squads, memberships, join codes, and publishing a drill to a squad. |
+| [lib/trainings/](lib/trainings/) | A session: an ordered list of drills behind one share link. |
+| [lib/export/record.ts](lib/export/record.ts) | Rasterises the live board frame by frame into an MP4/WebM file. |
 
 ### Why steps, not a timeline
 
@@ -60,22 +63,56 @@ the editor finds its feet. `schemaVersion` lives inside the document, so a migra
 a function rather than a DDL script. Every write goes through `validateScene`, and every
 read is parsed on the way out — the column is never trusted.
 
-## Auth
+## Accounts, squads and who sees what
 
-Email and password, on the coach side only. The player-facing `/b/[shareId]` link stays
-public on purpose: an unguessable nanoid, no login, opened on a phone at the side of a
-court. That link is the point of the product; a signup wall in front of it would defeat it.
+Three platform roles. A **coach** owns a library, squads and trainings. A **player** owns
+nothing and sees one page — everything published to a squad they belong to. An **admin**
+can see and re-role every account. The team role sits on the *membership*, not the user,
+so the same person can coach one squad and play in another.
 
-Sessions are a random 32-byte token in an httpOnly cookie; the database stores only its
-SHA-256, so a database leak hands nobody a working session. Expiry is 30 days, slid
-forward once a session passes its halfway point.
+A squad is joined through a reusable code that lives for 14 days: one link pasted into the
+group chat rather than fifteen invitations. Accepting is a POST — prefetching the link
+enrols nobody — and an account created through an invite takes its role from that invite.
+
+Publishing is deliberately separate from the share link. `/b/[shareId]` stays public and
+unguessable for anyone you paste it to, no login, opened on a phone at the side of a
+court — that link is the point of the product and a signup wall in front of it would
+defeat it. *Publishing* is the other half: it makes a drill appear, without any link, in
+the trainings of everyone in the squad.
+
+Authorization lives in the data-access layer and in each server action, never only in a
+layout — a layout does not re-render on navigation and does not gate the segments below
+it. Sessions are a random 32-byte token in an httpOnly cookie; the database stores only
+its SHA-256, so a leak hands nobody a working session. Expiry is 30 days, slid forward
+past halfway, and a disabled account is refused at the session check, so switching it off
+kills a live cookie immediately rather than at its expiry.
+
+## Trainings and types
+
+A **training** is an ordered list of drills with one link (`/t/[shareId]`), a date and an
+optional squad — the thing a coach actually sends. Each item shows a still of its setup,
+so a player sees the shape before deciding to open anything.
+
+**Types** are the coach's own vocabulary — ataque, defesa, bolas paradas — used to filter
+the library. Deleting a type does not delete its plays: `type_id` is `ON DELETE SET NULL`,
+so they become untyped and can be reclassified.
+
+## Video export
+
+The board already on screen is rasterised frame by frame while ordinary playback runs,
+and fed to `MediaRecorder`. The alternative — a second renderer drawing straight to a
+canvas — would mean every change to a token, a trace or the pitch had to be made twice,
+in two languages, forever. MP4 is preferred over WebM because it is what WhatsApp, iOS
+and Android all accept without converting.
 
 ## Where it stands
 
 Built: the court and tokens, drag-to-record paths with the five line kinds, steps with
-notes and durations, playback with scrub and speed, undo/redo, autosave to Postgres,
-the library, and the public share link.
+notes and durations, playback with scrub, speed (0.25x–2x) and step-at-a-time, undo/redo,
+autosave to Postgres, the library with named plays and type filtering, the public share
+link, accounts with roles, squads with join codes, publishing to a squad, the player
+feed, trainings behind one link, video export, and a Portuguese interface.
 
-Not built yet: PNG/WebM export, the session builder that prints a training sheet,
-reorderable step thumbnails, tags and filtering in the library, and ball attachment is
-manual (pick the carrier in the token panel) rather than inferred.
+Not built yet: PNG export, a printable training sheet, reorderable step thumbnails, and
+ball attachment is manual (pick the carrier in the token panel) rather than inferred.
+The `tags` column on `drills` is still unused — types took the job it was added for.

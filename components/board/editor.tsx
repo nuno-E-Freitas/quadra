@@ -9,6 +9,7 @@ import { PALETTE } from "@/lib/presets";
 import { PROFILES, moveKinds, type Scene, type Vec } from "@/lib/scene";
 import { BoardView, type DrawnMove } from "./board-view";
 import { usePlayback, SPEEDS } from "./use-playback";
+import { ExportVideo } from "./export-video";
 import styles from "./editor.module.css";
 
 type DrillProps = {
@@ -242,6 +243,7 @@ export function Editor({ drill }: { drill: DrillProps }) {
           >
             {copied ? "Link copiado" : "Copiar link"}
           </button>
+          <ExportVideo svgRef={svgRef} playback={playback} title={title} />
           <Link className="btn" href={`/b/${drill.shareId}`} target="_blank">
             Abrir
           </Link>

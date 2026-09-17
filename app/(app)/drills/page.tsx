@@ -1,29 +1,72 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { drills } from "@/db/schema";
+import { drillTypes, drills } from "@/db/schema";
 import { requireCoach } from "@/lib/auth/session";
 import { createDrill } from "@/lib/drills/actions";
+import { listDrillTypes } from "@/lib/drills/types";
 import styles from "../app.module.css";
 
 export const metadata: Metadata = { title: "Biblioteca · Quadra" };
 
-export default async function DrillsPage() {
-  const user = await requireCoach();
+/** "none" is a real filter, not the absence of one: untyped plays are the pile
+ *  a coach most wants to find and classify. */
+const UNTYPED = "none";
 
-  const rows = await db
-    .select({
-      id: drills.id,
-      title: drills.title,
-      kind: drills.kind,
-      scene: drills.scene,
-      updatedAt: drills.updatedAt,
-    })
-    .from(drills)
-    .where(eq(drills.ownerId, user.id))
-    .orderBy(desc(drills.updatedAt))
-    .limit(60);
+export default async function DrillsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tipo?: string }>;
+}) {
+  const user = await requireCoach();
+  const { tipo } = await searchParams;
+
+  const types = await listDrillTypes(user.id);
+  const active = tipo && (tipo === UNTYPED || types.some((t) => t.id === tipo)) ? tipo : null;
+
+  const filter =
+    active === UNTYPED
+      ? and(eq(drills.ownerId, user.id), isNull(drills.typeId))
+      : active
+        ? and(eq(drills.ownerId, user.id), eq(drills.typeId, active))
+        : eq(drills.ownerId, user.id);
+
+  const [rows, counts] = await Promise.all([
+    db
+      .select({
+        id: drills.id,
+        title: drills.title,
+        kind: drills.kind,
+        scene: drills.scene,
+        updatedAt: drills.updatedAt,
+        typeName: drillTypes.name,
+      })
+      .from(drills)
+      .leftJoin(drillTypes, eq(drillTypes.id, drills.typeId))
+      .where(filter)
+      .orderBy(desc(drills.updatedAt))
+      .limit(60),
+    db
+      .select({ typeId: drills.typeId, n: sql<number>`count(*)::int` })
+      .from(drills)
+      .where(eq(drills.ownerId, user.id))
+      .groupBy(drills.typeId),
+  ]);
+
+  const countFor = (id: string | null) => counts.find((c) => c.typeId === id)?.n ?? 0;
+  const total = counts.reduce((sum, c) => sum + c.n, 0);
+
+  const chip = (href: string, label: string, n: number, on: boolean) => (
+    <Link
+      key={href}
+      href={href}
+      className={styles.pill + " " + (on ? styles.pillOn : "")}
+      style={{ textDecoration: "none" }}
+    >
+      {label} {n}
+    </Link>
+  );
 
   return (
     <>
@@ -32,28 +75,56 @@ export default async function DrillsPage() {
           <span className="eyebrow">Biblioteca</span>
           <h1>As tuas jogadas e exercícios</h1>
         </div>
-        <div className={styles.newButtons}>
-          <form action={createDrill}>
-            <input type="hidden" name="kind" value="play" />
-            <button className="btn btn-primary" type="submit">
-              Nova jogada
-            </button>
-          </form>
-          <form action={createDrill}>
-            <input type="hidden" name="kind" value="training" />
-            <button className="btn" type="submit">
-              Novo exercício
-            </button>
-          </form>
-        </div>
       </div>
+
+      <section className={styles.section} style={{ marginTop: 0 }}>
+        <form action={createDrill} className={styles.inline}>
+          <input
+            name="title"
+            placeholder="Nome da jogada"
+            maxLength={120}
+            aria-label="Nome da jogada"
+            style={{ minWidth: 190 }}
+          />
+          <select name="typeId" defaultValue={active && active !== UNTYPED ? active : ""} aria-label="Tipo">
+            <option value="">sem tipo</option>
+            {types.map((type) => (
+              <option key={type.id} value={type.id}>
+                {type.name}
+              </option>
+            ))}
+          </select>
+          <button className="btn btn-primary" type="submit" name="kind" value="play">
+            Nova jogada
+          </button>
+          <button className="btn" type="submit" name="kind" value="training">
+            Novo exercício
+          </button>
+        </form>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.inline}>
+          {chip("/drills", "Todas", total, !active)}
+          {types.map((type) =>
+            chip("/drills?tipo=" + type.id, type.name, countFor(type.id), active === type.id),
+          )}
+          {countFor(null) > 0
+            ? chip("/drills?tipo=" + UNTYPED, "Sem tipo", countFor(null), active === UNTYPED)
+            : null}
+          <Link href="/types" className={styles.meta} style={{ marginLeft: 6 }}>
+            Gerir tipos →
+          </Link>
+        </div>
+      </section>
 
       {rows.length === 0 ? (
         <div className={styles.empty}>
-          <b>Ainda não há nada guardado</b>
+          <b>{active ? "Nada neste tipo" : "Ainda não há nada guardado"}</b>
           <p>
-            Começa por uma jogada: coloca os jogadores na quadra, arrasta-os, e cada movimento deixa o
-            seu trajeto marcado. Depois envia o link à tua equipa.
+            {active
+              ? "Nenhuma jogada está classificada assim. Abre uma jogada para lhe dar um tipo."
+              : "Começa por uma jogada: dá-lhe um nome, coloca os jogadores na quadra, arrasta-os, e cada movimento deixa o seu trajeto marcado. Depois envia o link à tua equipa."}
           </p>
         </div>
       ) : (
@@ -61,9 +132,10 @@ export default async function DrillsPage() {
           {rows.map((row) => {
             const steps = Math.max(0, (row.scene?.steps?.length ?? 1) - 1);
             return (
-              <Link key={row.id} href={`/drills/${row.id}`} className={styles.card}>
+              <Link key={row.id} href={"/drills/" + row.id} className={styles.card}>
                 <span className={styles.meta}>
-                  {row.kind === "play" ? "jogada" : "treino"} · {steps} passo{steps === 1 ? "" : "s"}
+                  {row.typeName ?? (row.kind === "play" ? "jogada" : "treino")} · {steps} passo
+                  {steps === 1 ? "" : "s"}
                 </span>
                 <b>{row.title}</b>
                 <span className={styles.meta}>

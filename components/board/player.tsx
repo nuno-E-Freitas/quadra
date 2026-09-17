@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { Scene } from "@/lib/scene";
 import { BoardView } from "./board-view";
 import { SPEEDS, usePlayback } from "./use-playback";
+import { ExportVideo } from "./export-video";
 import styles from "./editor.module.css";
 
 /**
@@ -12,6 +13,7 @@ import styles from "./editor.module.css";
  */
 export function Player({ scene, title }: { scene: Scene; title: string }) {
   const playback = usePlayback(scene, { autoPlay: true });
+  const svgRef = useRef<SVGSVGElement>(null);
   const step = playback.activeStep > 0 ? scene.steps[playback.activeStep] : null;
 
   useEffect(() => {
@@ -21,7 +23,12 @@ export function Player({ scene, title }: { scene: Scene; title: string }) {
   return (
     <div className={styles.board}>
       <div className={styles.pitch}>
-        <BoardView scene={scene} positions={playback.frame.positions} moves={playback.frame.moves} />
+        <BoardView
+          ref={svgRef}
+          scene={scene}
+          positions={playback.frame.positions}
+          moves={playback.frame.moves}
+        />
       </div>
 
       {playback.total > 0 ? (
@@ -53,6 +60,7 @@ export function Player({ scene, title }: { scene: Scene; title: string }) {
               onChange={(e) => playback.seek(Number(e.target.value))}
               aria-label="Percorrer"
             />
+            <ExportVideo svgRef={svgRef} playback={playback} title={title} />
             <div className={styles.segs} role="group" aria-label="Velocidade">
               {SPEEDS.map((rate) => (
                 <button

@@ -54,6 +54,24 @@ export const sessions = pgTable(
   (t) => [index("sessions_user_id_idx").on(t.userId)],
 );
 
+export const drillTypes = pgTable(
+  "drill_types",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    ownerId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text().notNull(),
+    /** Where it sits in the coach's own list, not alphabetical order. */
+    position: integer().notNull().default(0),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("drill_types_owner_name_key").on(t.ownerId, t.name),
+    index("drill_types_owner_idx").on(t.ownerId, t.position),
+  ],
+);
+
 /**
  * One table, JSONB scene. The scene is always read and written whole, and its
  * shape will move a dozen times while the editor finds its feet — `schemaVersion`
@@ -67,6 +85,12 @@ export const drills = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     kind: text({ enum: ["play", "training"] }).notNull(),
+    /**
+     * The coach's own category — ataque, defesa, bolas paradas. Nullable and
+     * set null on delete, so removing a type reclassifies its plays rather than
+     * destroying them.
+     */
+    typeId: uuid().references(() => drillTypes.id, { onDelete: "set null" }),
     title: text().notNull(),
     description: text(),
     tags: text().array().notNull().default(sql`'{}'::text[]`),
@@ -79,6 +103,7 @@ export const drills = pgTable(
   (t) => [
     uniqueIndex("drills_share_id_key").on(t.shareId),
     index("drills_owner_updated_idx").on(t.ownerId, t.updatedAt.desc()),
+    index("drills_owner_type_idx").on(t.ownerId, t.typeId),
     index("drills_tags_idx").using("gin", t.tags),
   ],
 );
@@ -206,6 +231,7 @@ export const trainingSessionItems = pgTable(
 
 export type User = typeof users.$inferSelect;
 export type Drill = typeof drills.$inferSelect;
+export type DrillType = typeof drillTypes.$inferSelect;
 export type Team = typeof teams.$inferSelect;
 export type Membership = typeof memberships.$inferSelect;
 export type TrainingSession = typeof trainingSessions.$inferSelect;

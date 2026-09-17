@@ -6,22 +6,39 @@ import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db } from "@/db";
 import { drills } from "@/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requireCoach } from "@/lib/auth/session";
+import { drillTypes } from "@/db/schema";
 import { DEFAULT_TITLE, newScene } from "@/lib/presets";
 import { validateScene, type SceneKind } from "@/lib/scene";
 
 export type SaveResult = { ok: true; savedAt: number } | { ok: false; error: string };
 
 export async function createDrill(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireCoach();
   const kind = (formData.get("kind") === "training" ? "training" : "play") as SceneKind;
+
+  // Naming it at birth beats "Jogada sem nome" sitting in the library for weeks;
+  // the editor can still rename it afterwards.
+  const title = String(formData.get("title") ?? "").trim().slice(0, 120) || DEFAULT_TITLE[kind];
+
+  const rawType = String(formData.get("typeId") ?? "").trim();
+  let typeId: string | null = null;
+  if (rawType) {
+    const [owned] = await db
+      .select({ id: drillTypes.id })
+      .from(drillTypes)
+      .where(and(eq(drillTypes.id, rawType), eq(drillTypes.ownerId, user.id)))
+      .limit(1);
+    typeId = owned?.id ?? null;
+  }
 
   const [created] = await db
     .insert(drills)
     .values({
       ownerId: user.id,
       kind,
-      title: DEFAULT_TITLE[kind],
+      typeId,
+      title,
       scene: newScene(kind),
       shareId: nanoid(12),
     })
@@ -35,7 +52,7 @@ export async function saveDrill(
   id: string,
   input: { title: string; scene: unknown },
 ): Promise<SaveResult> {
-  const user = await requireUser();
+  const user = await requireCoach();
 
   const title = input.title.trim().slice(0, 120) || "Sem nome";
   const validated = validateScene(input.scene);
@@ -56,7 +73,7 @@ export async function saveDrill(
 }
 
 export async function deleteDrill(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireCoach();
   const id = String(formData.get("id"));
 
   await db.delete(drills).where(and(eq(drills.id, id), eq(drills.ownerId, user.id)));
@@ -66,7 +83,7 @@ export async function deleteDrill(formData: FormData) {
 }
 
 export async function duplicateDrill(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireCoach();
   const id = String(formData.get("id"));
 
   const [source] = await db
@@ -81,7 +98,8 @@ export async function duplicateDrill(formData: FormData) {
     .values({
       ownerId: user.id,
       kind: source.kind,
-      title: `${source.title} (copy)`,
+      typeId: source.typeId,
+      title: `${source.title} (cópia)`,
       description: source.description,
       tags: source.tags,
       scene: source.scene,
