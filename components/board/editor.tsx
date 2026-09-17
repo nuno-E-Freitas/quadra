@@ -6,8 +6,9 @@ import { saveDrill } from "@/lib/drills/actions";
 import { useEditor, useTemporal } from "@/lib/editor-store";
 import { MOVE_STYLE } from "@/lib/geometry";
 import { PALETTE, PITCH_PRESETS } from "@/lib/presets";
-import { PROFILES, moveKinds, type Scene, type Vec } from "@/lib/scene";
+import { PITCH_OVERLAYS, PROFILES, moveKinds, type PitchOverlay, type Scene, type Vec } from "@/lib/scene";
 import { BoardView, type DrawnMove } from "./board-view";
+import { OVERLAY_LABEL } from "./pitch";
 import { usePlayback, SPEEDS } from "./use-playback";
 import { ExportVideo } from "./export-video";
 import styles from "./editor.module.css";
@@ -38,6 +39,16 @@ const KIND_PT: Record<string, string> = {
   marker: "marca",
   goal: "baliza",
 };
+
+
+/** The three jobs this page does, and the order a play goes through them. */
+type Mode = "montar" | "gravar" | "rever";
+
+const MODES: [Mode, string, string][] = [
+  ["montar", "Montar", "Arrumar as peças onde a jogada começa"],
+  ["gravar", "Gravar", "Desenhar o movimento"],
+  ["rever", "Rever", "Ver e enviar, como os jogadores vão ver"],
+];
 
 export function Editor({ drill }: { drill: DrillProps }) {
   /**
@@ -75,7 +86,6 @@ export function Editor({ drill }: { drill: DrillProps }) {
   const [live, setLive] = useState<{ id: string; points: Vec[]; color: string } | null>(null);
 
   const playback = usePlayback(scene);
-  const viewingPlayback = playback.playing || playback.elapsed > 0;
 
   const undo = useTemporal((t) => t.undo);
   const redo = useTemporal((t) => t.redo);
@@ -216,6 +226,43 @@ export function Editor({ drill }: { drill: DrillProps }) {
 
   const shareUrl = drill.shareUrl;
 
+  const [mode, setMode] = useState<Mode>(drill.scene.steps.length > 1 ? "rever" : "montar");
+
+  /**
+   * Arranging, recording and reviewing use almost disjoint controls, and showing
+   * all of them at once was what made this page feel crowded. One switch, and
+   * each mode carries only its own tools.
+   */
+  const go = (next: Mode) => {
+    if (next !== "rever") playback.reset();
+    if (next === "gravar" && !recording) useEditor.getState().startRecording();
+    if (next !== "gravar" && recording) useEditor.getState().stopRecording();
+    setMode(next);
+  };
+
+  const onPitch = mode !== "rever" && !playback.playing;
+  const showingRun = mode === "rever" && (playback.playing || playback.elapsed > 0);
+
+  const stepStrip = (
+    <div className={styles.steps}>
+      {scene.steps.map((s, index) => (
+        <button
+          key={s.id}
+          type="button"
+          className={`${styles.step} ${playback.playing && playback.activeStep === index ? styles.stepPlaying : ""}`}
+          aria-pressed={stepIndex === index}
+          onClick={() => {
+            playback.reset();
+            useEditor.getState().setStep(index);
+          }}
+        >
+          {index === 0 ? "Início" : `Momento ${index}`}
+          {index > 0 ? <span className={styles.count}>{s.moves.length}</span> : null}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <div className={styles.wrap}>
       <div className={styles.titleRow}>
@@ -244,360 +291,412 @@ export function Editor({ drill }: { drill: DrillProps }) {
           <button className="btn" type="button" onClick={() => redo()} disabled={!canRedo} title="Refazer (Ctrl+Shift+Z)">
             Refazer
           </button>
-          <button
-            className="btn"
-            type="button"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(shareUrl);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1800);
-              } catch {
-                setCopied(false);
-              }
-            }}
-          >
-            {copied ? "Link copiado" : "Copiar link"}
-          </button>
-          <ExportVideo svgRef={svgRef} playback={playback} title={title} />
-          <Link className="btn" href={`/b/${drill.shareId}`} target="_blank">
-            Abrir
-          </Link>
         </div>
       </div>
 
       {saveError ? <p className="alert">{saveError}</p> : null}
 
-      <div className={styles.board}>
-        <div className={styles.bar}>
-          <div className={styles.segs} role="group" aria-label="Tipo de traço">
-            {moveKinds.map((kind) => (
-              <button
-                key={kind}
-                type="button"
-                className={styles.seg}
-                aria-pressed={tool === kind}
-                disabled={stepIndex === 0}
-                onClick={() => useEditor.getState().setTool(kind)}
-              >
-                {MOVE_STYLE[kind].label}
-              </button>
-            ))}
-          </div>
-          <div className={styles.rowRight}>
-            <button
-              className="btn btn-primary"
-              type="button"
-              onClick={() => (playback.playing ? playback.stop() : playback.play())}
-              disabled={scene.steps.length < 2}
-            >
-              {playback.playing ? "■ Parar" : "▶ Ver o movimento"}
-            </button>
-            <button
-              className="btn"
-              type="button"
-              onClick={playback.playStep}
-              disabled={!playback.hasNextStep}
-              title="Correr o passo seguinte e parar nele"
-            >
-              ▸| Passo
-            </button>
-            <button className="btn" type="button" onClick={() => playback.reset()} disabled={playback.elapsed === 0}>
-              Repor
-            </button>
-          </div>
-        </div>
+      <div className={styles.modes} role="group" aria-label="Modo">
+        {MODES.map(([key, label, hint]) => (
+          <button
+            key={key}
+            type="button"
+            className={styles.mode}
+            aria-pressed={mode === key}
+            onClick={() => go(key)}
+            title={hint}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
-        <div className={styles.pitch}>
-          <BoardView
-            ref={svgRef}
-            scene={scene}
-            positions={viewingPlayback ? playback.frame.positions : editPositions}
-            moves={viewingPlayback ? playback.frame.moves : editMoves}
-            live={live && live.points.length > 1 ? { points: live.points, color: live.color } : null}
-            selectedId={viewingPlayback ? null : selectedId}
-            draggingId={live?.id ?? null}
-            interactive={!playback.playing}
-            onTokenPointerDown={onTokenPointerDown}
-            onBackgroundPointerDown={() => useEditor.getState().select(null)}
-          />
-        </div>
+      <div className={styles.pitch}>
+        <BoardView
+          ref={svgRef}
+          scene={scene}
+          positions={showingRun ? playback.frame.positions : editPositions}
+          moves={showingRun ? playback.frame.moves : editMoves}
+          live={live && live.points.length > 1 ? { points: live.points, color: live.color } : null}
+          selectedId={showingRun ? null : selectedId}
+          draggingId={live?.id ?? null}
+          interactive={onPitch}
+          onTokenPointerDown={onTokenPointerDown}
+          onBackgroundPointerDown={() => useEditor.getState().select(null)}
+        />
+      </div>
 
-        {scene.steps.length > 1 ? (
-          <div className={styles.transport}>
-            <input
-              className={styles.scrub}
-              type="range"
-              min={0}
-              max={playback.total}
-              step={10}
-              value={Math.round(playback.elapsed)}
-              onChange={(e) => playback.seek(Number(e.target.value))}
-              aria-label="Percorrer"
-            />
-            <span className={styles.count}>
-              {(playback.elapsed / 1000).toFixed(1)}s / {(playback.total / 1000).toFixed(1)}s
-            </span>
-            <div className={styles.segs} role="group" aria-label="Velocidade">
-              {SPEEDS.map((rate) => (
+      <p className={styles.hint}>
+        {mode === "montar" ? (
+          <>
+            <b>Montar.</b> Arrasta as peças para onde a jogada começa. Toca numa para lhe mudar o
+            número, a letra ou a cor. As marcas, os cones e as balizas estão em <b>Campo</b>.
+          </>
+        ) : mode === "gravar" ? (
+          <>
+            <b>A gravar · momento {stepIndex}.</b> Arrasta tudo o que se mexe agora — vários
+            jogadores e a bola ficam no mesmo momento. Quando voltares a pegar num que já mexeste,
+            começa um momento novo sozinho. Enganaste-te? <b>Ctrl+Z</b>.
+          </>
+        ) : (
+          <>
+            <b>Rever.</b> É isto que os jogadores vão ver. O quadro não se edita aqui — passa a{" "}
+            <b>Montar</b> ou <b>Gravar</b> para lhe mexer.
+          </>
+        )}
+      </p>
+
+      {mode === "montar" ? (
+        <div className={styles.panels}>
+          <section className={styles.panel}>
+            <h2>Peças · {profile.caption}</h2>
+            <div className={styles.roster}>
+              {scene.tokens.map((token) => (
                 <button
-                  key={rate}
+                  key={token.id}
                   type="button"
-                  className={styles.seg}
-                  aria-pressed={playback.speed === rate}
-                  onClick={() => playback.setSpeed(rate)}
+                  className={styles.rosterRow}
+                  aria-pressed={selectedId === token.id}
+                  onClick={() => useEditor.getState().select(token.id)}
                 >
-                  {rate}×
+                  <i className={styles.dot} style={{ background: token.color }} />
+                  <span>
+                    {token.kind === "player"
+                      ? `${token.label || "–"} · ${SIDE_PT[token.side]}`
+                      : token.kind === "marker"
+                        ? `marca ${token.label || ""}`.trim()
+                        : KIND_PT[token.kind]}
+                  </span>
                 </button>
               ))}
             </div>
-          </div>
-        ) : null}
 
-        <p className={styles.hint}>
-          {recording ? (
-            <>
-              <b>A gravar · momento {stepIndex}.</b> Arrasta tudo o que se mexe agora — vários
-              jogadores e a bola ficam no mesmo momento. Quando voltares a pegar num que já mexeste,
-              começa um momento novo sozinho. Enganaste-te? <b>Ctrl+Z</b>.
-            </>
-          ) : stepIndex === 0 ? (
-            <>
-              <b>Posição inicial.</b> Arrasta as peças para as colocar; toca numa para mudar a cor ou o
-              número. Depois carrega em <b>Gravar</b> e desenha a jogada de uma assentada.
-            </>
-          ) : (
-            <>
-              <b>Passo {stepIndex}.</b> Arrasta uma peça para desenhar o trajeto como{" "}
-              <b>{MOVE_STYLE[tool].label.toLowerCase()}</b>. Arrastar a mesma peça outra vez substitui o
-              trajeto. Toca para selecionar.
-            </>
-          )}
-        </p>
-      </div>
-
-      <div className={styles.panels}>
-        <section className={styles.panel}>
-          <h2>Passos</h2>
-          <div className={styles.steps}>
-            {scene.steps.map((s, index) => (
-              <button
-                key={s.id}
-                type="button"
-                className={`${styles.step} ${playback.playing && playback.activeStep === index ? styles.stepPlaying : ""}`}
-                aria-pressed={stepIndex === index}
-                onClick={() => {
-                  playback.reset();
-                  useEditor.getState().setStep(index);
-                }}
-              >
-                {index === 0 ? "Início" : `Passo ${index}`}
-                {index > 0 ? <span className={styles.count}>{s.moves.length}</span> : null}
+            <div className={styles.inline}>
+              <button className="btn" type="button" onClick={() => useEditor.getState().addToken("player", "home")}>
+                + Nossa
               </button>
-            ))}
-            <button
-              className={recording ? "btn" : "btn btn-primary"}
-              type="button"
-              onClick={() =>
-                recording
-                  ? useEditor.getState().stopRecording()
-                  : useEditor.getState().startRecording()
-              }
-              title={
-                recording
-                  ? "Fechar a gravação"
-                  : "Abrir um momento e gravar tudo o que arrastares"
-              }
-            >
-              {recording ? "■ Terminar" : "● Gravar"}
-            </button>
-            <button className="btn" type="button" onClick={() => useEditor.getState().addStep()}>
-              + Juntar passo
-            </button>
-          </div>
+              <button className="btn" type="button" onClick={() => useEditor.getState().addToken("player", "away")}>
+                + Adversária
+              </button>
+            </div>
 
-          {stepIndex > 0 ? (
-            <div className={styles.noteRow}>
-              <div className="field">
-                <label htmlFor="note">Nota</label>
-                <input
-                  id="note"
-                  value={step.note ?? ""}
-                  placeholder="o ala fixa o marcador antes de cortar"
-                  maxLength={280}
-                  onChange={(e) => useEditor.getState().setStepNote(stepIndex, e.target.value)}
-                />
+            {selected ? (
+              <>
+                <h2>Selecionado · {KIND_PT[selected.kind]}</h2>
+                {selected.kind === "player" || selected.kind === "marker" ? (
+                  <>
+                    <div className={styles.inline}>
+                      <div className={`field ${styles.labelInput}`}>
+                        <label htmlFor="label">{selected.kind === "marker" ? "Letra" : "Número"}</label>
+                        <input
+                          id="label"
+                          value={selected.label}
+                          maxLength={3}
+                          onChange={(e) => useEditor.getState().setTokenLabel(selected.id, e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className={styles.swatches}>
+                      {PALETTE.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          className={styles.sw}
+                          style={{ background: color }}
+                          aria-label={`Cor ${color}`}
+                          aria-pressed={selected.color.toLowerCase() === color.toLowerCase()}
+                          onClick={() => useEditor.getState().setTokenColor(selected.id, color)}
+                        />
+                      ))}
+                    </div>
+                  </>
+                ) : null}
+
+                {selected.kind === "ball" ? (
+                  <div className={styles.inline}>
+                    <span className={styles.count}>Levada por</span>
+                    <select
+                      value={scene.attachments?.[selected.id] ?? ""}
+                      onChange={(e) => useEditor.getState().attachBall(selected.id, e.target.value || null)}
+                    >
+                      <option value="">ninguém</option>
+                      {scene.tokens
+                        .filter((t) => t.kind === "player")
+                        .map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.label || t.id} · {SIDE_PT[t.side]}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                ) : null}
+
+                <button className="btn" type="button" onClick={() => useEditor.getState().removeToken(selected.id)}>
+                  Remover peça
+                </button>
+              </>
+            ) : null}
+          </section>
+
+          <section className={styles.panel}>
+            <h2>Campo</h2>
+            {/* Marks, cones and goals belong to the court, not to the squad —
+                which is where a coach looks for them. */}
+            <div className={styles.inline}>
+              <button className="btn" type="button" onClick={() => useEditor.getState().addToken("marker", "neutral")}>
+                + Marca
+              </button>
+              {profile.allowsProps ? (
+                <>
+                  <button className="btn" type="button" onClick={() => useEditor.getState().addToken("cone", "neutral")}>
+                    + Cone
+                  </button>
+                  <button className="btn" type="button" onClick={() => useEditor.getState().addToken("goal", "neutral")}>
+                    + Baliza
+                  </button>
+                </>
+              ) : null}
+            </div>
+            <p className={styles.note}>
+              Uma marca é um ponto de referência: onde arranca a rotação, onde se aciona a pressão.
+              Ganha uma letra e arrasta-se como as outras peças.
+            </p>
+
+            <h2>Linhas do pavilhão</h2>
+            <div className={styles.inline}>
+              {PITCH_OVERLAYS.map((name) => {
+                const on = scene.pitch.overlays.includes(name);
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    className={styles.seg}
+                    aria-pressed={on}
+                    onClick={() =>
+                      useEditor.getState().setPitch({
+                        overlays: on
+                          ? scene.pitch.overlays.filter((o: PitchOverlay) => o !== name)
+                          : [...scene.pitch.overlays, name],
+                      })
+                    }
+                  >
+                    {OVERLAY_LABEL[name]}
+                  </button>
+                );
+              })}
+            </div>
+            <p className={styles.note}>
+              As marcações das outras modalidades pintadas no mesmo chão, desenhadas por baixo. O teu
+              padrão está nas Definições e vale para tudo o que criares a partir daí.
+            </p>
+
+            <details className={styles.sheet}>
+              <summary>Cores da quadra</summary>
+              <div className={styles.inline}>
+                {PITCH_PRESETS.map((preset) => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    className={styles.seg}
+                    aria-pressed={scene.pitch.surface === preset.surface && scene.pitch.lines === preset.lines}
+                    onClick={() =>
+                      useEditor.getState().setPitch({
+                        surface: preset.surface,
+                        lines: preset.lines,
+                        surround: preset.surround,
+                      })
+                    }
+                  >
+                    <i className={styles.dot} style={{ background: preset.surface, borderColor: preset.lines }} />
+                    {preset.name}
+                  </button>
+                ))}
               </div>
-              <div className={`field ${styles.duration}`}>
-                <label htmlFor="duration">Segundos</label>
-                <input
-                  id="duration"
-                  type="number"
-                  min={0.2}
-                  max={20}
-                  step={0.1}
-                  value={(step.durationMs / 1000).toFixed(1)}
-                  onChange={(e) => useEditor.getState().setStepDuration(stepIndex, Number(e.target.value) * 1000)}
-                />
+              <div className={styles.inline}>
+                {(
+                  [
+                    ["surface", "Piso"],
+                    ["lines", "Linhas"],
+                    ["surround", "Fora"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <label key={key} className={styles.inline} style={{ gap: 5 }}>
+                    <span className={styles.count}>{label}</span>
+                    <input
+                      type="color"
+                      value={scene.pitch[key]}
+                      aria-label={label}
+                      onChange={(event) => useEditor.getState().setPitch({ [key]: event.target.value })}
+                      style={{ width: 38, height: 28, padding: 2, cursor: "pointer" }}
+                    />
+                  </label>
+                ))}
               </div>
-              <button className="btn" type="button" onClick={() => useEditor.getState().clearStepMoves()}>
-                Limpar trajetos
+              <p className={styles.note}>Vale só para esta jogada. O teu padrão está nas Definições.</p>
+            </details>
+          </section>
+        </div>
+      ) : mode === "gravar" ? (
+        <div className={styles.panels}>
+          <section className={styles.panel}>
+            <h2>Traço</h2>
+            <div className={styles.segs} role="group" aria-label="Tipo de traço">
+              {moveKinds.map((kind) => (
+                <button
+                  key={kind}
+                  type="button"
+                  className={styles.seg}
+                  aria-pressed={tool === kind}
+                  onClick={() => useEditor.getState().setTool(kind)}
+                >
+                  {MOVE_STYLE[kind].label}
+                </button>
+              ))}
+            </div>
+
+            <div className={styles.inline}>
+              <button className="btn btn-primary" type="button" onClick={() => go("rever")}>
+                ■ Terminar
+              </button>
+              <button className="btn" type="button" onClick={() => useEditor.getState().addStep()}>
+                + Momento em branco
+              </button>
+            </div>
+
+            {stepIndex > 0 ? (
+              <div className={styles.noteRow}>
+                <div className="field">
+                  <label htmlFor="note">Nota deste momento</label>
+                  <input
+                    id="note"
+                    value={step.note ?? ""}
+                    placeholder="o ala fixa o marcador antes de cortar"
+                    maxLength={280}
+                    onChange={(e) => useEditor.getState().setStepNote(stepIndex, e.target.value)}
+                  />
+                </div>
+                <div className={`field ${styles.duration}`}>
+                  <label htmlFor="duration">Segundos</label>
+                  <input
+                    id="duration"
+                    type="number"
+                    min={0.2}
+                    max={20}
+                    step={0.1}
+                    value={(step.durationMs / 1000).toFixed(1)}
+                    onChange={(e) =>
+                      useEditor.getState().setStepDuration(stepIndex, Number(e.target.value) * 1000)
+                    }
+                  />
+                </div>
+                <button className="btn" type="button" onClick={() => useEditor.getState().clearStepMoves()}>
+                  Limpar trajetos
+                </button>
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={() => useEditor.getState().deleteStep(stepIndex)}
+                  disabled={scene.steps.length <= 1}
+                >
+                  Apagar momento
+                </button>
+              </div>
+            ) : null}
+          </section>
+
+          <section className={styles.panel}>
+            <h2>Momentos</h2>
+            {stepStrip}
+          </section>
+        </div>
+      ) : (
+        <div className={styles.panels}>
+          <section className={styles.panel}>
+            <h2>Reprodução</h2>
+            <div className={styles.inline}>
+              <button
+                className="btn btn-primary"
+                type="button"
+                onClick={() => (playback.playing ? playback.stop() : playback.play())}
+                disabled={scene.steps.length < 2}
+              >
+                {playback.playing ? "■ Parar" : "▶ Ver"}
               </button>
               <button
                 className="btn"
                 type="button"
-                onClick={() => useEditor.getState().deleteStep(stepIndex)}
-                disabled={scene.steps.length <= 1}
+                onClick={playback.playStep}
+                disabled={!playback.hasNextStep}
+                title="Correr o momento seguinte e parar nele"
               >
-                Apagar passo
+                ▸| Momento
+              </button>
+              <button className="btn" type="button" onClick={() => playback.reset()} disabled={playback.elapsed === 0}>
+                Repor
               </button>
             </div>
-          ) : null}
-        </section>
 
-        <section className={styles.panel}>
-          <h2>Plantel · {profile.caption}</h2>
-          <div className={styles.roster}>
-            {scene.tokens.map((token) => (
-              <button
-                key={token.id}
-                type="button"
-                className={styles.rosterRow}
-                aria-pressed={selectedId === token.id}
-                onClick={() => useEditor.getState().select(token.id)}
-              >
-                <i className={styles.dot} style={{ background: token.color }} />
-                <span>
-                  {token.kind === "player" ? `${token.label || "–"} · ${SIDE_PT[token.side]}` : KIND_PT[token.kind]}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <div className={styles.inline}>
-            <button className="btn" type="button" onClick={() => useEditor.getState().addToken("player", "home")}>
-              + Nossa
-            </button>
-            <button className="btn" type="button" onClick={() => useEditor.getState().addToken("player", "away")}>
-              + Adversária
-            </button>
-            <button className="btn" type="button" onClick={() => useEditor.getState().addToken("marker", "neutral")}>
-              + Marca
-            </button>
-            {profile.allowsProps ? (
-              <>
-                <button className="btn" type="button" onClick={() => useEditor.getState().addToken("cone", "neutral")}>
-                  + Cone
-                </button>
-                <button className="btn" type="button" onClick={() => useEditor.getState().addToken("goal", "neutral")}>
-                  + Baliza
-                </button>
-              </>
-            ) : null}
-          </div>
-
-          {selected ? (
-            <>
-              <h2>Selecionado · {KIND_PT[selected.kind]}</h2>
-              {selected.kind === "player" || selected.kind === "marker" ? (
-                <>
-                  <div className={styles.inline}>
-                    <div className={`field ${styles.labelInput}`}>
-                      <label htmlFor="label">
-                        {selected.kind === "marker" ? "Letra" : "Número"}
-                      </label>
-                      <input
-                        id="label"
-                        value={selected.label}
-                        maxLength={3}
-                        onChange={(e) => useEditor.getState().setTokenLabel(selected.id, e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className={styles.swatches}>
-                    {PALETTE.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        className={styles.sw}
-                        style={{ background: color }}
-                        aria-label={`Cor ${color}`}
-                        aria-pressed={selected.color.toLowerCase() === color.toLowerCase()}
-                        onClick={() => useEditor.getState().setTokenColor(selected.id, color)}
-                      />
-                    ))}
-                  </div>
-                </>
-              ) : null}
-
-              {selected.kind === "ball" ? (
-                <div className={styles.inline}>
-                  <span className={styles.count}>Levada por</span>
-                  <select
-                    value={scene.attachments?.[selected.id] ?? ""}
-                    onChange={(e) => useEditor.getState().attachBall(selected.id, e.target.value || null)}
-                  >
-                    <option value="">ninguém</option>
-                    {scene.tokens
-                      .filter((t) => t.kind === "player")
-                      .map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.label || t.id} · {SIDE_PT[t.side]}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              ) : null}
-
-              <button className="btn" type="button" onClick={() => useEditor.getState().removeToken(selected.id)}>
-                Remover peça
-              </button>
-            </>
-          ) : null}
-
-          <h2>Campo</h2>
-          <div className={styles.inline}>
-            {PITCH_PRESETS.map((preset) => (
-              <button
-                key={preset.name}
-                type="button"
-                className={styles.seg}
-                aria-pressed={scene.pitch.surface === preset.surface && scene.pitch.lines === preset.lines}
-                onClick={() =>
-                  useEditor.getState().setPitch({
-                    surface: preset.surface,
-                    lines: preset.lines,
-                    surround: preset.surround,
-                  })
-                }
-              >
-                <i className={styles.dot} style={{ background: preset.surface, borderColor: preset.lines }} />
-                {preset.name}
-              </button>
-            ))}
-          </div>
-          <div className={styles.inline}>
-            {([
-              ["surface", "Piso"],
-              ["lines", "Linhas"],
-              ["surround", "Fora"],
-            ] as const).map(([key, label]) => (
-              <label key={key} className={styles.inline} style={{ gap: 5 }}>
-                <span className={styles.count}>{label}</span>
+            {scene.steps.length > 1 ? (
+              <div className={styles.transport}>
                 <input
-                  type="color"
-                  value={scene.pitch[key]}
-                  aria-label={label}
-                  onChange={(event) => useEditor.getState().setPitch({ [key]: event.target.value })}
-                  style={{ width: 38, height: 28, padding: 2, cursor: "pointer" }}
+                  className={styles.scrub}
+                  type="range"
+                  min={0}
+                  max={playback.total}
+                  step={10}
+                  value={Math.round(playback.elapsed)}
+                  onChange={(e) => playback.seek(Number(e.target.value))}
+                  aria-label="Percorrer"
                 />
-              </label>
-            ))}
-          </div>
+                <span className={styles.count}>
+                  {(playback.elapsed / 1000).toFixed(1)}s / {(playback.total / 1000).toFixed(1)}s
+                </span>
+                <div className={styles.segs} role="group" aria-label="Velocidade">
+                  {SPEEDS.map((rate) => (
+                    <button
+                      key={rate}
+                      type="button"
+                      className={styles.seg}
+                      aria-pressed={playback.speed === rate}
+                      onClick={() => playback.setSpeed(rate)}
+                    >
+                      {rate}×
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
-          <p className={styles.share}>{shareUrl}</p>
-        </section>
-      </div>
+            {stepStrip}
+          </section>
+
+          <section className={styles.panel}>
+            <h2>Enviar</h2>
+            <div className={styles.inline}>
+              <button
+                className="btn"
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(shareUrl);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1800);
+                  } catch {
+                    setCopied(false);
+                  }
+                }}
+              >
+                {copied ? "Link copiado" : "Copiar link"}
+              </button>
+              <ExportVideo svgRef={svgRef} playback={playback} title={title} />
+              <Link className="btn" href={`/b/${drill.shareId}`} target="_blank">
+                Abrir
+              </Link>
+            </div>
+            <p className={styles.share}>{shareUrl}</p>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

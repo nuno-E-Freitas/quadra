@@ -13,7 +13,7 @@ import {
 import type { Scene } from "@/lib/scene";
 
 export type UserPreferences = {
-  pitch?: { surface?: string; lines?: string; surround?: string };
+  pitch?: { surface?: string; lines?: string; surround?: string; overlays?: string[] };
 };
 
 export const USER_ROLES = ["admin", "coach", "player"] as const;

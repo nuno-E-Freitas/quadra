@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { requireCoach } from "@/lib/auth/session";
+import { PITCH_OVERLAYS } from "@/lib/scene";
 import { getPreferences } from "./queries";
 
 const hexColour = z.string().regex(/^#[0-9a-fA-F]{6}$/);
@@ -15,11 +16,18 @@ export async function savePitchPreference(formData: FormData) {
   const user = await requireCoach();
 
   const parsed = z
-    .object({ surface: hexColour, lines: hexColour, surround: hexColour })
+    .object({
+      surface: hexColour,
+      lines: hexColour,
+      surround: hexColour,
+      overlays: z.array(z.enum(PITCH_OVERLAYS)),
+    })
     .safeParse({
       surface: formData.get("surface"),
       lines: formData.get("lines"),
       surround: formData.get("surround"),
+      // Checkboxes: absent entirely when none is ticked.
+      overlays: formData.getAll("overlays").map(String),
     });
   if (!parsed.success) redirect("/settings");
 

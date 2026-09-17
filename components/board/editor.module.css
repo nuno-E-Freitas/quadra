@@ -313,3 +313,75 @@
   color: var(--muted);
   word-break: break-all;
 }
+
+/* The mode switch: the one control that decides what everything else shows. */
+.modes {
+  display: flex;
+  gap: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 3px;
+  margin-bottom: 10px;
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.mode {
+  font: inherit;
+  font-family: var(--font-display), sans-serif;
+  font-size: 0.86rem;
+  font-weight: 600;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  /* 44px tall: this is the control most used with a thumb. */
+  padding: 11px 20px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mode:hover:not([aria-pressed="true"]) {
+  color: var(--ink);
+}
+
+.mode[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.pitch {
+  margin-bottom: 4px;
+}
+
+/* A short explanation under a group of controls, not a label for one. */
+.note {
+  color: var(--ink-2);
+  font-size: 0.83rem;
+  line-height: 1.45;
+  max-width: 52ch;
+}
+
+/* Things set once and then left alone. */
+.sheet {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sheet > summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--ink-2);
+  list-style-position: inside;
+}
+
+.sheet > summary:hover {
+  color: var(--ink);
+}

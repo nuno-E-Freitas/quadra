@@ -2,23 +2,33 @@
 
 import { useState } from "react";
 import { BoardView } from "@/components/board/board-view";
+import { OVERLAY_LABEL } from "@/components/board/pitch";
 import { PITCH_PRESETS } from "@/lib/presets";
-import type { Scene } from "@/lib/scene";
+import { PITCH_OVERLAYS, type PitchOverlay, type Scene } from "@/lib/scene";
 import styles from "@/app/(app)/app.module.css";
 
-type Colours = { surface: string; lines: string; surround: string };
+type Look = { surface: string; lines: string; surround: string; overlays: PitchOverlay[] };
 
 /**
- * Three colours and a court to see them on. The preview is the point — picking
- * a line colour against an unseen surface is guesswork, and the pair that reads
- * well on a laptop can vanish on a phone in the sun.
+ * Three colours, the other sports painted on the same floor, and a court to see
+ * them on. The preview is the point — picking a line colour against an unseen
+ * surface is guesswork, and a pair that reads well on a laptop can vanish on a
+ * phone in the sun.
  */
-export function PitchPicker({ scene, initial }: { scene: Scene; initial: Colours }) {
-  const [colours, setColours] = useState<Colours>(initial);
+export function PitchPicker({ scene, initial }: { scene: Scene; initial: Look }) {
+  const [look, setLook] = useState<Look>(initial);
 
-  const preview: Scene = { ...scene, pitch: { ...scene.pitch, ...colours } };
-  const set = (key: keyof Colours) => (value: string) =>
-    setColours((current) => ({ ...current, [key]: value }));
+  const preview: Scene = { ...scene, pitch: { ...scene.pitch, ...look } };
+  const set = (key: "surface" | "lines" | "surround") => (value: string) =>
+    setLook((current) => ({ ...current, [key]: value }));
+
+  const toggle = (name: PitchOverlay) =>
+    setLook((current) => ({
+      ...current,
+      overlays: current.overlays.includes(name)
+        ? current.overlays.filter((o) => o !== name)
+        : [...current.overlays, name],
+    }));
 
   return (
     <>
@@ -34,11 +44,12 @@ export function PitchPicker({ scene, initial }: { scene: Scene; initial: Colours
             className={styles.pill}
             style={{ cursor: "pointer", background: "none" }}
             onClick={() =>
-              setColours({
+              setLook((current) => ({
+                ...current,
                 surface: preset.surface,
                 lines: preset.lines,
                 surround: preset.surround,
-              })
+              }))
             }
           >
             <span
@@ -59,10 +70,32 @@ export function PitchPicker({ scene, initial }: { scene: Scene; initial: Colours
         ))}
       </div>
 
-      <div className={styles.inline}>
-        <Swatch label="Piso" name="surface" value={colours.surface} onChange={set("surface")} />
-        <Swatch label="Linhas" name="lines" value={colours.lines} onChange={set("lines")} />
-        <Swatch label="Fora" name="surround" value={colours.surround} onChange={set("surround")} />
+      <div className={styles.inline} style={{ marginBottom: 14 }}>
+        <Swatch label="Piso" name="surface" value={look.surface} onChange={set("surface")} />
+        <Swatch label="Linhas" name="lines" value={look.lines} onChange={set("lines")} />
+        <Swatch label="Fora" name="surround" value={look.surround} onChange={set("surround")} />
+      </div>
+
+      <div>
+        <p className={styles.meta} style={{ textTransform: "none", letterSpacing: 0, marginBottom: 8 }}>
+          <b>Linhas do pavilhão.</b> Desenha por baixo as marcações das outras modalidades pintadas no
+          mesmo chão. É o que os jogadores têm debaixo dos pés — dizer &quot;arranca na linha azul do
+          basquete&quot; vale mais do que &quot;arranca a oito metros&quot;.
+        </p>
+        <div className={styles.inline}>
+          {PITCH_OVERLAYS.map((name) => (
+            <label key={name} className={styles.pill} style={{ cursor: "pointer", gap: 6, display: "inline-flex" }}>
+              <input
+                type="checkbox"
+                name="overlays"
+                value={name}
+                checked={look.overlays.includes(name)}
+                onChange={() => toggle(name)}
+              />
+              {OVERLAY_LABEL[name]}
+            </label>
+          ))}
+        </div>
       </div>
     </>
   );

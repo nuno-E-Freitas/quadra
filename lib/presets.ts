@@ -1,4 +1,4 @@
-import type { Scene, SceneKind, Vec } from "./scene";
+import type { PitchOverlay, Scene, SceneKind, Vec } from "./scene";
 
 export const COLORS = {
   home: "#2bb8a3",
@@ -45,17 +45,24 @@ const TRAINING_SEED: Seed[] = [
   { id: "ball", kind: "ball", side: "neutral", label: "", color: COLORS.ball, at: { x: 13.9, y: 4.7 } },
 ];
 
-export type PitchColours = { surface: string; lines: string; surround: string };
+/** Everything about how a court looks, as opposed to what stands on it. */
+export type PitchLook = {
+  surface: string;
+  lines: string;
+  surround: string;
+  overlays: PitchOverlay[];
+};
 
 /** The court as it has always looked. A coach's saved preference overrides it. */
-export const DEFAULT_PITCH: PitchColours = {
+export const DEFAULT_PITCH: PitchLook = {
   surface: "#1b3a37",
   lines: "#ffffff",
   surround: "#17302e",
+  overlays: [],
 };
 
 /** Ready-made courts, so nobody has to find three colours that work together. */
-export const PITCH_PRESETS: ({ name: string } & PitchColours)[] = [
+export const PITCH_PRESETS: ({ name: string } & Omit<PitchLook, "overlays">)[] = [
   { name: "Quadra", surface: "#1b3a37", lines: "#ffffff", surround: "#17302e" },
   { name: "Pavilhão", surface: "#2f4f7a", lines: "#ffffff", surround: "#1d3352" },
   { name: "Madeira", surface: "#c08a4e", lines: "#ffffff", surround: "#8a5f33" },
@@ -65,7 +72,7 @@ export const PITCH_PRESETS: ({ name: string } & PitchColours)[] = [
 ];
 
 /** A fresh scene is one setup step and nothing else — steps[0] never has moves. */
-export function newScene(kind: SceneKind, pitch: Partial<PitchColours> = {}): Scene {
+export function newScene(kind: SceneKind, pitch: Partial<PitchLook> = {}): Scene {
   const seed = kind === "play" ? PLAY_SEED : TRAINING_SEED;
   const positions: Record<string, Vec> = {};
   for (const s of seed) positions[s.id] = { ...s.at };

@@ -1,5 +1,5 @@
 import { DEFAULT_PITCH, PITCH_PRESETS, newScene } from "@/lib/presets";
-import { sceneSchema } from "@/lib/scene";
+import { PITCH_OVERLAYS, sceneSchema } from "@/lib/scene";
 
 let failures = 0;
 function check(label: string, actual: unknown, expected: unknown) {
@@ -65,6 +65,30 @@ console.log("\n== as cores propostas são hex de seis dígitos ==");
   // only thing standing between a preset and the database.
   const rejected = PITCH_PRESETS.filter((p) => !sceneSchema.safeParse(newScene("play", p)).success);
   check("todas passam o schema", rejected.map((p) => p.name), []);
+}
+
+console.log("\n== linhas do pavilhão ==");
+{
+  // What the JSONB column holds for every drill saved before overlays existed.
+  const old = { ...newScene("play"), pitch: { width: 40, height: 20, variant: "full" } };
+  const parsed = sceneSchema.safeParse(old);
+  check("uma cena antiga continua válida", parsed.success, true);
+  if (parsed.success) check("e fica sem marcações", parsed.data.pitch.overlays, []);
+
+  const marked = newScene("play", { overlays: ["basquetebol", "andebol"] });
+  check("uma cena nova segue a preferência", marked.pitch.overlays, ["basquetebol", "andebol"]);
+  check("e continua válida", sceneSchema.safeParse(marked).success, true);
+
+  // A name from a version of this app that offered something we no longer do.
+  const bogus = newScene("play");
+  (bogus.pitch as unknown as { overlays: string[] }).overlays = ["padel"];
+  check("um nome desconhecido é recusado", sceneSchema.safeParse(bogus).success, false);
+
+  check(
+    "as três modalidades passam o schema",
+    PITCH_OVERLAYS.filter((o) => !sceneSchema.safeParse(newScene("play", { overlays: [o] })).success),
+    [],
+  );
 }
 
 console.log(failures === 0 ? "\nTUDO PASSA\n" : `\n${failures} FALHA(S)\n`);

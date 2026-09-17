@@ -234,3 +234,22 @@
   padding: 5px 9px;
   word-break: break-all;
 }
+
+/* The parts of a drill that are paperwork, not drawing. */
+.sheet {
+  margin-top: 30px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.sheet > summary {
+  cursor: pointer;
+  font-size: 0.86rem;
+  color: var(--ink-2);
+  list-style-position: inside;
+  padding: 6px 0;
+}
+
+.sheet > summary:hover {
+  color: var(--ink);
+}

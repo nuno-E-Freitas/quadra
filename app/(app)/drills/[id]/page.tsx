@@ -61,7 +61,12 @@ export default async function DrillPage({ params }: { params: Promise<{ id: stri
           scene: scene.data,
         }}
       />
-      <section className={styles.section}>
+      {/* Set once and then left alone: it has no business competing with the
+          board for attention while a coach is drawing. */}
+      <details className={styles.sheet}>
+        <summary>Ficha da jogada — tipo, publicar, apagar</summary>
+
+        <section className={styles.section}>
         <h2>Tipo de jogada</h2>
         <form action={setDrillType} className={styles.inline}>
           <input type="hidden" name="drillId" value={row.id} />
@@ -104,7 +109,8 @@ export default async function DrillPage({ params }: { params: Promise<{ id: stri
             </ConfirmButton>
           </form>
         </div>
-      </section>
+        </section>
+      </details>
     </>
   );
 }

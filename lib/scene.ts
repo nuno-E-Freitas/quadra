@@ -46,6 +46,15 @@ export const stepSchema = z.object({
   note: z.string().max(280).optional(),
 });
 
+/**
+ * The other sports painted on the same floor. A pavilion is rarely futsal-only,
+ * and the handball 9 m or the basketball arc is what a player actually sees
+ * under their feet — so "start on the basketball line" means something, while
+ * "start eight metres out" does not.
+ */
+export const PITCH_OVERLAYS = ["andebol", "basquetebol", "voleibol"] as const;
+export type PitchOverlay = (typeof PITCH_OVERLAYS)[number];
+
 /** Six-digit hex, because that is what <input type="color"> emits. */
 const hexColour = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Cor inválida.");
 
@@ -64,6 +73,8 @@ export const sceneSchema = z.object({
     surface: hexColour.default("#1b3a37"),
     lines: hexColour.default("#ffffff"),
     surround: hexColour.default("#17302e"),
+    /** Court markings drawn faintly beneath the futsal lines. */
+    overlays: z.array(z.enum(PITCH_OVERLAYS)).max(3).default([]),
   }),
   tokens: z.array(tokenSchema).min(1).max(24),
   /** steps[0] is the setup: positions only, no moves. */
