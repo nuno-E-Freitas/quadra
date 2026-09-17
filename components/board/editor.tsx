@@ -59,6 +59,7 @@ export function Editor({ drill }: { drill: DrillProps }) {
   const selectedId = useEditor((s) => s.selectedId);
   const tool = useEditor((s) => s.tool);
   const revision = useEditor((s) => s.revision);
+  const recording = useEditor((s) => s.recording);
 
   const [title, setTitle] = useState(drill.title);
   /** What the server last confirmed; anything newer is unsaved. */
@@ -227,7 +228,15 @@ export function Editor({ drill }: { drill: DrillProps }) {
         />
         <div className={styles.rowRight}>
           <span className={`${styles.status} ${saveError ? styles.statusError : ""}`}>
-            {saveError ? "Por guardar" : !touched ? "" : dirty ? "A guardar…" : "Guardado"}
+            {recording
+              ? "● A gravar"
+              : saveError
+                ? "Por guardar"
+                : !touched
+                  ? ""
+                  : dirty
+                    ? "A guardar…"
+                    : "Guardado"}
           </span>
           <button className="btn" type="button" onClick={() => undo()} disabled={!canUndo} title="Anular (Ctrl+Z)">
             Anular
@@ -346,10 +355,16 @@ export function Editor({ drill }: { drill: DrillProps }) {
         ) : null}
 
         <p className={styles.hint}>
-          {stepIndex === 0 ? (
+          {recording ? (
+            <>
+              <b>A gravar · momento {stepIndex}.</b> Arrasta tudo o que se mexe agora — vários
+              jogadores e a bola ficam no mesmo momento. Quando voltares a pegar num que já mexeste,
+              começa um momento novo sozinho. Enganaste-te? <b>Ctrl+Z</b>.
+            </>
+          ) : stepIndex === 0 ? (
             <>
               <b>Posição inicial.</b> Arrasta as peças para as colocar; toca numa para mudar a cor ou o
-              número. Junta um passo para começar a gravar movimento.
+              número. Depois carrega em <b>Gravar</b> e desenha a jogada de uma assentada.
             </>
           ) : (
             <>
@@ -380,6 +395,22 @@ export function Editor({ drill }: { drill: DrillProps }) {
                 {index > 0 ? <span className={styles.count}>{s.moves.length}</span> : null}
               </button>
             ))}
+            <button
+              className={recording ? "btn" : "btn btn-primary"}
+              type="button"
+              onClick={() =>
+                recording
+                  ? useEditor.getState().stopRecording()
+                  : useEditor.getState().startRecording()
+              }
+              title={
+                recording
+                  ? "Fechar a gravação"
+                  : "Abrir um momento e gravar tudo o que arrastares"
+              }
+            >
+              {recording ? "■ Terminar" : "● Gravar"}
+            </button>
             <button className="btn" type="button" onClick={() => useEditor.getState().addStep()}>
               + Juntar passo
             </button>

@@ -13,6 +13,11 @@ export type EditorState = {
   tool: MoveKind;
   /** Bumped on every scene change so autosave knows there is something to send. */
   revision: number;
+  /**
+   * While recording, steps open themselves. It is deliberately not part of the
+   * undo history — undo is about the play, not about what you were doing.
+   */
+  recording: boolean;
 
   load: (scene: Scene) => void;
   setStep: (index: number) => void;
@@ -23,6 +28,8 @@ export type EditorState = {
   recordDrag: (id: string, points: Vec[]) => void;
   clearStepMoves: () => void;
 
+  startRecording: () => void;
+  stopRecording: () => void;
   addStep: () => void;
   deleteStep: (index: number) => void;
   setStepNote: (index: number, note: string) => void;
@@ -37,6 +44,9 @@ export type EditorState = {
 };
 
 const clone = <T,>(value: T): T => structuredClone(value);
+
+/** The scene schema caps steps at 40; opening one past that would not validate. */
+const MAX_STEPS = 40;
 
 /** Tools that mean the player has the ball. A screen, a pass or a shot does not. */
 const CARRYING_TOOLS: MoveKind[] = ["run", "dribble"];
@@ -90,8 +100,10 @@ export const useEditor = create<EditorState>()(
       selectedId: null,
       tool: "run",
       revision: 0,
+      recording: false,
 
-      load: (scene) => set({ scene: clone(scene), stepIndex: 0, selectedId: null, revision: 0 }),
+      load: (scene) =>
+        set({ scene: clone(scene), stepIndex: 0, selectedId: null, revision: 0, recording: false }),
       setStep: (index) =>
         set((s) => ({
           stepIndex: Math.max(0, Math.min(index, s.scene.steps.length - 1)),
@@ -131,13 +143,31 @@ export const useEditor = create<EditorState>()(
             return { scene, revision: s.revision + 1 };
           }
 
-          const step = scene.steps[s.stepIndex];
+          /**
+           * Coming back to a token that has already moved in this step is the
+           * cue that the next beat has begun — a coach moves each player once
+           * per beat — so while recording that opens a step instead of
+           * replacing the path. Not recording, it still corrects the path.
+           */
+          let stepIndex = s.stepIndex;
+          const reMoved = scene.steps[stepIndex].moves.some((m) => m.tokenId === id);
+          if (s.recording && reMoved && scene.steps.length < MAX_STEPS) {
+            scene.steps.push({
+              id: `s${Date.now().toString(36)}`,
+              durationMs: 1200,
+              moves: [],
+              positions: clone(scene.steps[stepIndex].positions),
+            });
+            stepIndex = scene.steps.length - 1;
+          }
+
+          const step = scene.steps[stepIndex];
           const simplified = simplify(points, 0.25);
           const move = { tokenId: id, kind: s.tool, points: simplified };
           const existing = step.moves.findIndex((m) => m.tokenId === id);
           if (existing >= 0) step.moves[existing] = move;
           else step.moves.push(move);
-          propagate(scene, s.stepIndex, id, end);
+          propagate(scene, stepIndex, id, end);
 
           // A player who sets off with the ball takes it with him. The ball gets
           // the same path shifted by the gap it already had, so it travels beside
@@ -145,6 +175,7 @@ export const useEditor = create<EditorState>()(
           // as a condução, which is what carrying the ball is called.
           if (CARRYING_TOOLS.includes(s.tool)) {
             const at = s.scene.steps[s.stepIndex].positions;
+
             const origin = at[id] ?? points[0];
             for (const ballId of ballsCarriedBy(s.scene, at, id)) {
               const ball = at[ballId];
@@ -155,11 +186,11 @@ export const useEditor = create<EditorState>()(
               const existingBall = step.moves.findIndex((m) => m.tokenId === ballId);
               if (existingBall >= 0) step.moves[existingBall] = ballMove;
               else step.moves.push(ballMove);
-              propagate(scene, s.stepIndex, ballId, path[path.length - 1]);
+              propagate(scene, stepIndex, ballId, path[path.length - 1]);
             }
           }
 
-          return { scene, revision: s.revision + 1 };
+          return { scene, stepIndex, revision: s.revision + 1 };
         }),
 
       clearStepMoves: () =>
@@ -169,6 +200,51 @@ export const useEditor = create<EditorState>()(
           step.moves = [];
           step.positions = clone(startPositions(scene, s.stepIndex));
           return { scene, revision: s.revision + 1 };
+        }),
+
+      /**
+       * Recording always opens a fresh beat, so the setup you have just arranged
+       * is never overwritten by the first drag. If the last step is already
+       * empty there is nothing to open — walk into that one instead.
+       */
+      startRecording: () =>
+        set((s) => {
+          const scene = clone(s.scene);
+          const last = scene.steps[scene.steps.length - 1];
+          const needsStep = scene.steps.length === 1 || last.moves.length > 0;
+
+          if (needsStep && scene.steps.length < MAX_STEPS) {
+            scene.steps.push({
+              id: `s${Date.now().toString(36)}`,
+              durationMs: 1200,
+              moves: [],
+              positions: clone(last.positions),
+            });
+          }
+
+          return {
+            scene,
+            stepIndex: scene.steps.length - 1,
+            selectedId: null,
+            recording: true,
+            revision: s.revision + 1,
+          };
+        }),
+
+      stopRecording: () =>
+        set((s) => {
+          const scene = clone(s.scene);
+          // A beat that was opened and never used would be a pause in the
+          // playback that nobody asked for.
+          const last = scene.steps[scene.steps.length - 1];
+          if (scene.steps.length > 1 && last.moves.length === 0) scene.steps.pop();
+
+          return {
+            scene,
+            recording: false,
+            stepIndex: Math.min(s.stepIndex, scene.steps.length - 1),
+            revision: s.revision + 1,
+          };
         }),
 
       addStep: () =>
