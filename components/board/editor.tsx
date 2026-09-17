@@ -16,6 +16,13 @@ type DrillProps = {
   id: string;
   title: string;
   shareId: string;
+  /**
+   * Built on the server from the request headers. Deriving it here from
+   * window.location instead would mean the server rendered a relative path and
+   * the client an absolute one — the two disagree, and React throws out the
+   * whole tree and redraws it.
+   */
+  shareUrl: string;
   scene: Scene;
 };
 
@@ -206,7 +213,7 @@ export function Editor({ drill }: { drill: DrillProps }) {
     [step.moves],
   );
 
-  const shareUrl = typeof window === "undefined" ? `/b/${drill.shareId}` : `${window.location.origin}/b/${drill.shareId}`;
+  const shareUrl = drill.shareUrl;
 
   return (
     <div className={styles.wrap}>

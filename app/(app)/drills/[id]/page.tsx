@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, eq } from "drizzle-orm";
@@ -35,18 +36,28 @@ export default async function DrillPage({ params }: { params: Promise<{ id: stri
   const scene = sceneSchema.safeParse(row.scene);
   if (!scene.success) notFound();
 
-  const [teams, published, types] = await Promise.all([
+  const [teams, published, types, h] = await Promise.all([
     getMyTeams(user.id),
     getDrillPublications(row.id),
     listDrillTypes(user.id),
+    headers(),
   ]);
+
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
 
   // Keyed by id so moving between drills remounts the editor with a clean store.
   return (
     <>
       <Editor
         key={row.id}
-        drill={{ id: row.id, title: row.title, shareId: row.shareId, scene: scene.data }}
+        drill={{
+          id: row.id,
+          title: row.title,
+          shareId: row.shareId,
+          shareUrl: proto + "://" + host + "/b/" + row.shareId,
+          scene: scene.data,
+        }}
       />
       <section className={styles.section}>
         <h2>Tipo de jogada</h2>
