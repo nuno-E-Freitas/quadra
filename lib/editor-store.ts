@@ -48,6 +48,9 @@ const clone = <T,>(value: T): T => structuredClone(value);
 /** The scene schema caps steps at 40; opening one past that would not validate. */
 const MAX_STEPS = 40;
 
+/** And the board at 24 pieces, for the same reason. */
+const MAX_TOKENS = 24;
+
 /** Tools that mean the player has the ball. A screen, a pass or a shot does not. */
 const CARRYING_TOOLS: MoveKind[] = ["run", "dribble"];
 
@@ -295,6 +298,10 @@ export const useEditor = create<EditorState>()(
         set((s) => {
           const scene = clone(s.scene);
           const profile = PROFILES[scene.kind];
+          // The scene schema caps the board at 24 pieces; without this the
+          // twenty-fifth is accepted here and then refused by autosave, which
+          // reads as the editor losing work.
+          if (scene.tokens.length >= MAX_TOKENS) return s;
           if (kind === "player" && scene.tokens.filter((t) => t.kind === "player").length >= profile.maxPlayers) {
             return s;
           }
@@ -309,13 +316,21 @@ export const useEditor = create<EditorState>()(
               ? COLORS.ball
               : kind === "cone"
                 ? COLORS.cone
-                : side === "away"
-                  ? COLORS.away
-                  : COLORS.home;
+                : kind === "marker"
+                  ? COLORS.amber
+                  : kind === "goal"
+                    ? COLORS.chalk
+                    : side === "away"
+                      ? COLORS.away
+                      : COLORS.home;
+          // Marks get letters and players get numbers, so a coach can say "go to
+          // B" without it colliding with the shirt numbers on the same board.
           const label =
             kind === "player"
               ? String(scene.tokens.filter((t) => t.kind === "player" && t.side === side).length + 1)
-              : "";
+              : kind === "marker"
+                ? String.fromCharCode(65 + (scene.tokens.filter((t) => t.kind === "marker").length % 26))
+                : "";
 
           scene.tokens.push({ id, kind, side, label, color });
           const at = { x: 20, y: kind === "player" ? (side === "away" ? 17 : 3) : 10 };

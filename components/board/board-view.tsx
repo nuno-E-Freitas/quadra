@@ -181,7 +181,43 @@ function TokenMark({
     );
   }
 
-  if (token.kind === "cone" || token.kind === "marker") {
+  /**
+   * A mark is a reference point — where a rotation starts, where the press is
+   * triggered — not an obstacle. A hollow dashed ring reads as "this spot
+   * matters" without looking like something a player runs around, which is
+   * exactly what the cone's solid triangle is for.
+   */
+  if (token.kind === "marker") {
+    return (
+      <g {...common}>
+        <circle
+          r="0.62"
+          fill="none"
+          stroke={token.color}
+          strokeWidth="0.17"
+          strokeDasharray="0.36 0.24"
+          strokeLinecap="round"
+        />
+        {token.label ? (
+          <text
+            textAnchor="middle"
+            y="0.26"
+            fontSize="0.72"
+            fill={token.color}
+            fontWeight={700}
+            style={{ pointerEvents: "none", userSelect: "none", fontFamily: "var(--font-sans), sans-serif" }}
+          >
+            {token.label}
+          </text>
+        ) : (
+          <circle r="0.13" fill={token.color} />
+        )}
+        {selected ? <circle r="0.95" fill="none" stroke="#ffffff" strokeWidth="0.14" /> : null}
+      </g>
+    );
+  }
+
+  if (token.kind === "cone") {
     return (
       <g {...common}>
         <path

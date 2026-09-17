@@ -481,21 +481,31 @@ export function Editor({ drill }: { drill: DrillProps }) {
             <button className="btn" type="button" onClick={() => useEditor.getState().addToken("player", "away")}>
               + Adversária
             </button>
+            <button className="btn" type="button" onClick={() => useEditor.getState().addToken("marker", "neutral")}>
+              + Marca
+            </button>
             {profile.allowsProps ? (
-              <button className="btn" type="button" onClick={() => useEditor.getState().addToken("cone", "neutral")}>
-                + Cone
-              </button>
+              <>
+                <button className="btn" type="button" onClick={() => useEditor.getState().addToken("cone", "neutral")}>
+                  + Cone
+                </button>
+                <button className="btn" type="button" onClick={() => useEditor.getState().addToken("goal", "neutral")}>
+                  + Baliza
+                </button>
+              </>
             ) : null}
           </div>
 
           {selected ? (
             <>
               <h2>Selecionado · {KIND_PT[selected.kind]}</h2>
-              {selected.kind === "player" ? (
+              {selected.kind === "player" || selected.kind === "marker" ? (
                 <>
                   <div className={styles.inline}>
                     <div className={`field ${styles.labelInput}`}>
-                      <label htmlFor="label">Número</label>
+                      <label htmlFor="label">
+                        {selected.kind === "marker" ? "Letra" : "Número"}
+                      </label>
                       <input
                         id="label"
                         value={selected.label}
