@@ -4,7 +4,7 @@ import { create, useStore } from "zustand";
 import { temporal } from "zundo";
 import { simplify } from "./geometry";
 import { COLORS } from "./presets";
-import { PROFILES, type MoveKind, type Scene, type Token, type Vec } from "./scene";
+import { ballsCarriedBy, PROFILES, type MoveKind, type Scene, type Token, type Vec } from "./scene";
 
 export type EditorState = {
   scene: Scene;
@@ -36,6 +36,28 @@ export type EditorState = {
 };
 
 const clone = <T,>(value: T): T => structuredClone(value);
+
+/** Tools that mean the player has the ball. A screen, a pass or a shot does not. */
+const CARRYING_TOOLS: MoveKind[] = ["run", "dribble"];
+
+/**
+ * Move along whatever the player was standing over. Carriers are read from the
+ * positions *before* the move: the question is whether the ball was at his feet
+ * when he set off, not where he happens to end up.
+ */
+function carryAlong(
+  scene: Scene,
+  source: Scene,
+  positions: Record<string, Vec>,
+  stepIndex: number,
+  playerId: string,
+  delta: Vec,
+) {
+  for (const ballId of ballsCarriedBy(source, positions, playerId)) {
+    const ball = positions[ballId];
+    if (ball) propagate(scene, stepIndex, ballId, { x: ball.x + delta.x, y: ball.y + delta.y });
+  }
+}
 
 /** Where a token sits when the given step begins. */
 export function startPositions(scene: Scene, stepIndex: number): Record<string, Vec> {
@@ -80,7 +102,15 @@ export const useEditor = create<EditorState>()(
       moveToken: (id, to) =>
         set((s) => {
           const scene = clone(s.scene);
+          const at = s.scene.steps[s.stepIndex].positions;
+          const before = at[id];
           propagate(scene, s.stepIndex, id, to);
+          if (before) {
+            carryAlong(scene, s.scene, at, s.stepIndex, id, {
+              x: to.x - before.x,
+              y: to.y - before.y,
+            });
+          }
           return { scene, revision: s.revision + 1 };
         }),
 
@@ -91,7 +121,12 @@ export const useEditor = create<EditorState>()(
 
           // The setup step holds no moves: dragging there just places the token.
           if (s.stepIndex === 0) {
+            const at = s.scene.steps[0].positions;
+            const before = at[id];
             propagate(scene, 0, id, end);
+            if (before) {
+              carryAlong(scene, s.scene, at, 0, id, { x: end.x - before.x, y: end.y - before.y });
+            }
             return { scene, revision: s.revision + 1 };
           }
 
@@ -103,16 +138,24 @@ export const useEditor = create<EditorState>()(
           else step.moves.push(move);
           propagate(scene, s.stepIndex, id, end);
 
-          // A dribble is one path, not two kept in sync: the carried ball rides along.
-          const carried = Object.entries(scene.attachments ?? {}).find(
-            ([, carrier]) => carrier === id,
-          )?.[0];
-          if (s.tool === "dribble" && carried) {
-            const ballMove = { tokenId: carried, kind: "dribble" as const, points: simplified };
-            const at = step.moves.findIndex((m) => m.tokenId === carried);
-            if (at >= 0) step.moves[at] = ballMove;
-            else step.moves.push(ballMove);
-            propagate(scene, s.stepIndex, carried, end);
+          // A player who sets off with the ball takes it with him. The ball gets
+          // the same path shifted by the gap it already had, so it travels beside
+          // him instead of snapping under his mark — and its own trace is drawn
+          // as a condução, which is what carrying the ball is called.
+          if (CARRYING_TOOLS.includes(s.tool)) {
+            const at = s.scene.steps[s.stepIndex].positions;
+            const origin = at[id] ?? points[0];
+            for (const ballId of ballsCarriedBy(s.scene, at, id)) {
+              const ball = at[ballId];
+              if (!ball) continue;
+              const gap = { x: ball.x - origin.x, y: ball.y - origin.y };
+              const path = simplified.map((pt) => ({ x: pt.x + gap.x, y: pt.y + gap.y }));
+              const ballMove = { tokenId: ballId, kind: "dribble" as const, points: path };
+              const existingBall = step.moves.findIndex((m) => m.tokenId === ballId);
+              if (existingBall >= 0) step.moves[existingBall] = ballMove;
+              else step.moves.push(ballMove);
+              propagate(scene, s.stepIndex, ballId, path[path.length - 1]);
+            }
           }
 
           return { scene, revision: s.revision + 1 };

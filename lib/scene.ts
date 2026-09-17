@@ -136,3 +136,56 @@ export function validateScene(input: unknown) {
     ? ({ success: false as const, error: new Error(issues.join(" ")), issues })
     : ({ success: true as const, data: scene });
 }
+
+/**
+ * How close the ball has to be to count as at a player's feet, in metres. The
+ * player mark is 0.85 m across and the ball 0.46, so they touch at about 1.3 —
+ * this leaves a little room for a coach who placed the ball roughly.
+ */
+export const CARRY_RADIUS_M = 1.5;
+
+/**
+ * Who is carrying a given ball right now.
+ *
+ * An explicit attachment always wins: a coach who picked a carrier in the panel
+ * means it, even if someone else drifts closer. Otherwise it is inferred from
+ * distance, and only the *nearest* player takes it — with two players standing
+ * over a loose ball, both carrying it would make moving either one drag the ball
+ * away from the other.
+ */
+export function carrierOf(
+  scene: Scene,
+  positions: Record<string, Vec>,
+  ballId: string,
+): string | null {
+  const explicit = scene.attachments?.[ballId];
+  if (explicit) return positions[explicit] ? explicit : null;
+
+  const ball = positions[ballId];
+  if (!ball) return null;
+
+  let best: string | null = null;
+  let bestDistance = CARRY_RADIUS_M;
+  for (const token of scene.tokens) {
+    if (token.kind !== "player") continue;
+    const at = positions[token.id];
+    if (!at) continue;
+    const distance = Math.hypot(at.x - ball.x, at.y - ball.y);
+    if (distance <= bestDistance) {
+      best = token.id;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+/** Every ball this player is carrying, in the order the scene lists them. */
+export function ballsCarriedBy(
+  scene: Scene,
+  positions: Record<string, Vec>,
+  playerId: string,
+): string[] {
+  return scene.tokens
+    .filter((t) => t.kind === "ball" && carrierOf(scene, positions, t.id) === playerId)
+    .map((t) => t.id);
+}
