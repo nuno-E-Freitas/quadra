@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ConfirmButton } from "@/components/confirm-button";
 import {
   createInvite,
   removeMember,
@@ -10,6 +11,13 @@ import {
 } from "@/lib/teams/actions";
 import { siteOrigin } from "@/lib/origin";
 import { getTeamDetail, requireTeamCoach } from "@/lib/teams/queries";
+import { getQuartets, getQuartetByUser } from "@/lib/teams/quartets";
+import {
+  assignToQuartet,
+  createQuartet,
+  deleteQuartet,
+  renameQuartet,
+} from "@/lib/teams/quartet-actions";
 import styles from "../../app.module.css";
 
 export const metadata: Metadata = { title: "Equipa · Quadra" };
@@ -18,7 +26,11 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   await requireTeamCoach(id);
   const { team, roster, invites } = await getTeamDetail(id);
-  const base = await siteOrigin();
+  const [base, blocks, blockOf] = await Promise.all([
+    siteOrigin(),
+    getQuartets(id),
+    getQuartetByUser(id),
+  ]);
 
   return (
     <>
@@ -82,6 +94,67 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
       </section>
 
       <section className={styles.section}>
+        <h2>Quartetos</h2>
+        <p className={styles.meta} style={{ textTransform: "none", letterSpacing: 0, marginBottom: 12 }}>
+          Futsal joga-se em blocos que rodam. Cria-os aqui e escolhe o de cada jogador na lista
+          abaixo — cada um pertence a um só, que é o que a rotação quer dizer.
+        </p>
+
+        <form action={createQuartet} className={styles.inline} style={{ marginBottom: 12 }}>
+          <input type="hidden" name="teamId" value={team.id} />
+          <input name="name" placeholder="Quarteto A" required maxLength={30} aria-label="Nome do quarteto" />
+          <button className="btn btn-primary" type="submit">
+            Criar quarteto
+          </button>
+        </form>
+
+        {blocks.length === 0 ? (
+          <p className={styles.meta} style={{ textTransform: "none", letterSpacing: 0 }}>
+            Ainda não há nenhum. Sem eles a equipa é uma lista; com eles é uma rotação.
+          </p>
+        ) : (
+          <div className={styles.rows}>
+            {blocks.map((block) => (
+              <div key={block.id} className={styles.row}>
+                <form action={renameQuartet} className={styles.inline}>
+                  <input type="hidden" name="teamId" value={team.id} />
+                  <input type="hidden" name="id" value={block.id} />
+                  <input
+                    name="name"
+                    defaultValue={block.name}
+                    maxLength={30}
+                    aria-label={"Nome de " + block.name}
+                    style={{ minWidth: 140 }}
+                  />
+                  <button className="btn" type="submit">
+                    Mudar nome
+                  </button>
+                </form>
+
+                <div className={styles.rowMain}>
+                  <span className={styles.meta}>
+                    {block.members.length === 0
+                      ? "ninguém ainda"
+                      : block.members.map((m) => m.name).join(", ")}
+                  </span>
+                </div>
+
+                <form action={deleteQuartet}>
+                  <input type="hidden" name="teamId" value={team.id} />
+                  <input type="hidden" name="id" value={block.id} />
+                  <ConfirmButton
+                    message={`Apagar "${block.name}"? Os jogadores ficam sem quarteto; ninguém sai da equipa.`}
+                  >
+                    Apagar
+                  </ConfirmButton>
+                </form>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className={styles.section}>
         <h2>
           Plantel <span className={styles.meta}>({roster.length})</span>
         </h2>
@@ -104,6 +177,28 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
                 </span>
 
                 <div className={styles.rowActions}>
+                  {blocks.length > 0 && member.role === "player" ? (
+                    <form action={assignToQuartet} className={styles.inline}>
+                      <input type="hidden" name="teamId" value={team.id} />
+                      <input type="hidden" name="userId" value={member.userId} />
+                      <select
+                        name="quartetId"
+                        defaultValue={blockOf.get(member.userId)?.id ?? ""}
+                        aria-label={"Quarteto de " + member.name}
+                      >
+                        <option value="">sem quarteto</option>
+                        {blocks.map((block) => (
+                          <option key={block.id} value={block.id}>
+                            {block.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button className="btn" type="submit">
+                        Definir
+                      </button>
+                    </form>
+                  ) : null}
+
                   <form action={setMemberNumber} className={styles.inline}>
                     <input type="hidden" name="teamId" value={team.id} />
                     <input type="hidden" name="userId" value={member.userId} />

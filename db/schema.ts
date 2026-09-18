@@ -259,6 +259,42 @@ export const trainingSessions = pgTable(
   ],
 );
 
+/**
+ * Futsal is not football with fewer people: it is played in blocks that rotate
+ * on and off together, and a coach thinks in those blocks before thinking in
+ * individuals. A player belongs to at most one in a squad, which is what the
+ * rotation means.
+ */
+export const quartets = pgTable(
+  "quartets",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    teamId: uuid()
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    name: text().notNull(),
+    position: integer().notNull().default(0),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("quartets_team_idx").on(t.teamId, t.position)],
+);
+
+export const quartetMembers = pgTable(
+  "quartet_members",
+  {
+    quartetId: uuid()
+      .notNull()
+      .references(() => quartets.id, { onDelete: "cascade" }),
+    userId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.quartetId, t.userId] }),
+    index("quartet_members_user_idx").on(t.userId),
+  ],
+);
+
 export const ATTENDANCE = ["vou", "duvida", "nao"] as const;
 export type Attendance = (typeof ATTENDANCE)[number];
 
@@ -298,6 +334,11 @@ export const trainingSessionItems = pgTable(
       .notNull()
       .references(() => drills.id, { onDelete: "cascade" }),
     position: integer().notNull(),
+    /**
+     * Which block this one is for. Null means everyone — most of a session is.
+     * Set null on delete so removing a block leaves the training standing.
+     */
+    quartetId: uuid().references(() => quartets.id, { onDelete: "set null" }),
     /** What the coach wants said about this drill in this training. */
     note: text(),
   },
@@ -313,3 +354,4 @@ export type DrillType = typeof drillTypes.$inferSelect;
 export type Team = typeof teams.$inferSelect;
 export type Membership = typeof memberships.$inferSelect;
 export type TrainingSession = typeof trainingSessions.$inferSelect;
+export type Quartet = typeof quartets.$inferSelect;

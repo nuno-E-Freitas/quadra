@@ -44,8 +44,8 @@ and cones. One editor, one renderer, one playback engine, one table.
 | [components/board/](components/board/) | The SVG court, the board renderer, the playback loop, the editor, the read-only player. |
 | [db/schema.ts](db/schema.ts) | Ten tables. `drills` carries the JSONB `scene`; the rest are accounts, squads and trainings. |
 | [lib/auth/](lib/auth/) | Email + password, bcrypt at cost 12, database-backed cookie sessions, roles. |
-| [lib/teams/](lib/teams/) | Squads, memberships, join codes, and publishing a drill to a squad. |
-| [lib/trainings/](lib/trainings/) | A session: an ordered list of drills behind one share link. |
+| [lib/teams/](lib/teams/) | Squads, memberships, join codes, quartets, and publishing a drill to a squad. |
+| [lib/trainings/](lib/trainings/) | A session: an ordered list of drills behind one share link, plus who is coming. |
 | [lib/export/record.ts](lib/export/record.ts) | Rasterises the live board frame by frame into an MP4/WebM file. |
 | [lib/settings/](lib/settings/) | Per-coach preferences, kept as JSONB on the user. |
 | [tests/](tests/) | `pnpm test` — the ball-carry rule and the court colours. |
@@ -107,18 +107,43 @@ canvas — would mean every change to a token, a trace or the pitch had to be ma
 in two languages, forever. MP4 is preferred over WebM because it is what WhatsApp, iOS
 and Android all accept without converting.
 
+## Running a week
+
+The product does not compete with other tactics boards. It competes with the squad’s
+group chat, which is where an amateur team actually lives — so the parts that matter
+most are the ones that make the week run itself.
+
+**Attendance.** A training carries a date and a squad, and players answer *vou / dúvida /
+não vou* on the link they already receive rather than on a page of their own. Answering
+needs an account, because a list of anonymous yeses counts nothing. The coach reads the
+counts first — there is no 4v4 with six people, and finding that out at the pavilion is
+the problem this solves.
+
+**The message, not the link.** One button hands over the whole paragraph for the group
+chat: title, day, description, link, and the line asking people to answer.
+
+**Quartets.** Futsal is not football with fewer people; it is played in blocks that rotate
+together. A squad has blocks, a player belongs to one, and an item of a training can
+belong to one — so the session link tells a player which parts are theirs.
+
 ## Where it stands
 
 Built: the court and tokens, drag-to-record paths with the five line kinds, steps with
-notes and durations, playback with scrub, speed (0.25x–2x) and step-at-a-time, undo/redo,
-autosave to Postgres, the library with named plays and type filtering, deleting a play,
-the public share link, accounts with roles, squads with join codes, publishing to a
-squad, the player feed, trainings behind one link, video export, a recolourable court
-with per-coach defaults, and a Portuguese interface.
+notes and durations, playback with scrub, speed (0.25x–2x) and step-at-a-time, traces that
+fade with age and a tap that isolates one player’s path, undo/redo, autosave to Postgres,
+the library with named plays and type filtering, types that carry a starting shape,
+deleting a play, the public share link, accounts with roles, password change and recovery,
+squads with join codes and quartets, publishing to a squad, the player feed, trainings
+behind one link with attendance, video export, a recolourable court with per-coach
+defaults and hand-drawn markings, and a Portuguese interface.
 
 The ball is carried by whoever is standing over it: a ball within 1.5 m of a player is at
 his feet, and moving him takes it along. An explicit attachment still overrides proximity.
 
-Not built yet: PNG export, a printable training sheet, reorderable step thumbnails, and
-ball attachment is manual (pick the carrier in the token panel) rather than inferred.
-The `tags` column on `drills` is still unused — types took the job it was added for.
+Not built yet: PNG export, a printable training sheet, reorderable step thumbnails, season
+stats, and anything offline — which matters more than it sounds for a product opened at
+the side of a pavilion. The `tags` column on `drills` is still unused; types took the job it
+was added for.
+
+Known rough edges: the app header does not wrap on a narrow phone, and the segmented
+controls are smaller than a thumb wants.

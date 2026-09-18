@@ -6,6 +6,7 @@ import { AttendanceAsk } from "@/components/attendance";
 import { Wordmark } from "@/components/wordmark";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getMyAnswer } from "@/lib/trainings/attendance";
+import { getQuartetByUser } from "@/lib/teams/quartets";
 import { sceneSchema } from "@/lib/scene";
 import { getTrainingByShareId } from "@/lib/trainings/queries";
 import shell from "@/app/b/[shareId]/share.module.css";
@@ -42,6 +43,11 @@ export default async function TrainingSharePage({
   const viewer = await getCurrentUser();
   const mine = viewer ? await getMyAnswer(training.id, viewer.id) : null;
 
+  // Which block the person reading belongs to, so the session can tell them
+  // which parts are theirs instead of making them ask at the pavilion.
+  const myBlock =
+    viewer && training.teamId ? ((await getQuartetByUser(training.teamId)).get(viewer.id) ?? null) : null;
+
   return (
     <main className={shell.shell}>
       <header className={shell.head}>
@@ -59,6 +65,7 @@ export default async function TrainingSharePage({
           </span>
         ) : null}
         {training.description ? <p className={styles.intro}>{training.description}</p> : null}
+        {myBlock ? <p className={styles.intro}>És do <b>{myBlock.name}</b>.</p> : null}
       </header>
 
       <AttendanceAsk
@@ -88,6 +95,13 @@ export default async function TrainingSharePage({
                   <span className={styles.num}>
                     {i + 1} · {item.kind === "play" ? "jogada" : "treino"} · {steps} passo
                     {steps === 1 ? "" : "s"}
+                    {item.quartetName ? (
+                      <>
+                        {" · "}
+                        {item.quartetId === myBlock?.id ? "PARA TI · " : ""}
+                        {item.quartetName}
+                      </>
+                    ) : null}
                   </span>
                   <h2>{item.title}</h2>
                   {item.note ? <p className={styles.note}>{item.note}</p> : null}

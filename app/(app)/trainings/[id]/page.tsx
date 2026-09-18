@@ -19,8 +19,10 @@ import {
   getAddableDrills,
   getTraining,
   getTrainingItems,
+  getTrainingQuartets,
   requireOwnedTraining,
 } from "@/lib/trainings/queries";
+import { setItemQuartet } from "@/lib/teams/quartet-actions";
 import styles from "../../app.module.css";
 
 export const metadata: Metadata = { title: "Treino · Quadra" };
@@ -51,6 +53,7 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
     siteOrigin(),
     getAttendance(id),
   ]);
+  const blocks = await getTrainingQuartets(id);
 
   const link = origin + "/t/" + training.shareId;
   const coached = teams.filter((t) => t.role === "coach");
@@ -163,6 +166,28 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
                 <span className={styles.pill}>{i + 1}</span>
                 <div className={styles.rowMain}>
                   <b>{item.title}</b>
+                  {blocks.length > 0 ? (
+                    <form action={setItemQuartet} className={styles.inline}>
+                      <input type="hidden" name="id" value={training.id} />
+                      <input type="hidden" name="drillId" value={item.drillId} />
+                      <select
+                        name="quartetId"
+                        defaultValue={item.quartetId ?? ""}
+                        aria-label={"Quarteto para " + item.title}
+                      >
+                        <option value="">toda a equipa</option>
+                        {blocks.map((block) => (
+                          <option key={block.id} value={block.id}>
+                            {block.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button className="btn" type="submit">
+                        Definir
+                      </button>
+                    </form>
+                  ) : null}
+
                   <form action={setItemNote} className={styles.inline}>
                     <input type="hidden" name="id" value={training.id} />
                     <input type="hidden" name="drillId" value={item.drillId} />

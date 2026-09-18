@@ -50,6 +50,13 @@
       "when": 1789726784809,
       "tag": "0006_cheerful_rafael_vega",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789727062321,
+      "tag": "0007_clever_stature",
+      "breakpoints": true
     }
   ]
 }

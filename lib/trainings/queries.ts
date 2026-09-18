@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/db";
 import {
   drills,
+  quartets,
   teams,
   trainingSessionItems,
   trainingSessions,
@@ -48,9 +49,12 @@ export async function getTrainingItems(sessionId: string) {
       scene: drills.scene,
       position: trainingSessionItems.position,
       note: trainingSessionItems.note,
+      quartetId: trainingSessionItems.quartetId,
+      quartetName: quartets.name,
     })
     .from(trainingSessionItems)
     .innerJoin(drills, eq(drills.id, trainingSessionItems.drillId))
+    .leftJoin(quartets, eq(quartets.id, trainingSessionItems.quartetId))
     .where(eq(trainingSessionItems.sessionId, sessionId))
     .orderBy(asc(trainingSessionItems.position));
 }
@@ -62,6 +66,22 @@ export async function getTraining(id: string) {
 }
 
 /** The public read: one link that carries the whole training. */
+/** The blocks of the squad a training belongs to, if it belongs to one. */
+export async function getTrainingQuartets(sessionId: string) {
+  const [training] = await db
+    .select({ teamId: trainingSessions.teamId })
+    .from(trainingSessions)
+    .where(eq(trainingSessions.id, sessionId))
+    .limit(1);
+  if (!training?.teamId) return [];
+
+  return db
+    .select({ id: quartets.id, name: quartets.name })
+    .from(quartets)
+    .where(eq(quartets.teamId, training.teamId))
+    .orderBy(asc(quartets.position), asc(quartets.name));
+}
+
 export async function getTrainingByShareId(shareId: string) {
   const [row] = await db
     .select({
@@ -69,6 +89,7 @@ export async function getTrainingByShareId(shareId: string) {
       title: trainingSessions.title,
       description: trainingSessions.description,
       scheduledFor: trainingSessions.scheduledFor,
+      teamId: trainingSessions.teamId,
       teamName: teams.name,
     })
     .from(trainingSessions)
