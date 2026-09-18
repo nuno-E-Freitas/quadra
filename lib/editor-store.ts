@@ -317,8 +317,13 @@ export const useEditor = create<EditorState>()(
           if (!profile.allowsProps && (kind === "cone" || kind === "goal")) return s;
 
           const id = nextTokenId(scene, kind === "player" ? (side === "away" ? "a" : "h") : kind);
+          // Match whoever is already on this side, so adding an eleventh piece
+          // does not reintroduce the colour the coach just changed away from.
+          const sameSide = scene.tokens.find((t) => t.kind === "player" && t.side === side);
           const color =
-            kind === "ball"
+            kind === "player" && sameSide
+              ? sameSide.color
+              : kind === "ball"
               ? COLORS.ball
               : kind === "cone"
                 ? COLORS.cone

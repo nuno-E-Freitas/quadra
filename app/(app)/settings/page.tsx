@@ -20,7 +20,7 @@ import {
   resetPitchPreference,
   savePitchPreference,
 } from "@/lib/settings/actions";
-import { getPitchDefaults } from "@/lib/settings/queries";
+import { getPieceDefaults, getPitchDefaults } from "@/lib/settings/queries";
 import styles from "../app.module.css";
 
 export const metadata: Metadata = { title: "Definições · Quadra" };
@@ -33,8 +33,9 @@ export const metadata: Metadata = { title: "Definições · Quadra" };
  */
 export default async function SettingsPage() {
   const user = await requireCoach();
-  const [pitch, types, mine] = await Promise.all([
+  const [pitch, kit, types, mine] = await Promise.all([
     getPitchDefaults(user.id),
+    getPieceDefaults(user.id),
     listDrillTypeTemplates(user.id),
     db
       .select({ id: drills.id, title: drills.title, kind: drills.kind })
@@ -133,14 +134,15 @@ export default async function SettingsPage() {
       </section>
 
       <section className={styles.section}>
-        <h2>Aspeto do campo</h2>
+        <h2>Aspeto do campo e das equipas</h2>
         <p className={styles.meta} style={{ textTransform: "none", letterSpacing: 0, marginBottom: 14 }}>
-          Vale para as jogadas que criares a partir daqui. As que já tens guardam as cores com que
-          foram feitas — podes mudá-las uma a uma no editor.
+          Vale para as jogadas que criares a partir daqui, incluindo as que nascem de um template: o
+          template dá a forma, isto dá o aspeto. As que já tens guardam as cores com que foram feitas,
+          e mudar a cor de uma peça dentro de uma jogada vale só para essa.
         </p>
 
         <form action={savePitchPreference}>
-          <PitchPicker scene={sample} initial={pitch} />
+          <PitchPicker scene={sample} initial={pitch} kit={kit} />
           <div className={styles.inline} style={{ marginTop: 16 }}>
             <button className="btn btn-primary" type="submit">
               Guardar

@@ -10,7 +10,7 @@ import { requireCoach } from "@/lib/auth/session";
 import { drillTypes } from "@/db/schema";
 import { DEFAULT_TITLE } from "@/lib/presets";
 import { sceneFromTemplate } from "@/lib/drills/template";
-import { getPitchDefaults } from "@/lib/settings/queries";
+import { getPieceDefaults, getPitchDefaults } from "@/lib/settings/queries";
 import { validateScene, type SceneKind } from "@/lib/scene";
 
 export type SaveResult = { ok: true; savedAt: number } | { ok: false; error: string };
@@ -43,7 +43,12 @@ export async function createDrill(formData: FormData) {
       kind,
       typeId,
       title,
-      scene: sceneFromTemplate(template, kind, await getPitchDefaults(user.id)),
+      scene: sceneFromTemplate(
+        template,
+        kind,
+        await getPitchDefaults(user.id),
+        await getPieceDefaults(user.id),
+      ),
       shareId: nanoid(12),
     })
     .returning({ id: drills.id });

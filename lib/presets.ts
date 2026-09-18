@@ -46,6 +46,11 @@ const TRAINING_SEED: Seed[] = [
 ];
 
 /** Everything about how a court looks, as opposed to what stands on it. */
+/** What the two sides wear. A club plays in the same kit every week. */
+export type PieceColours = { home: string; away: string };
+
+export const DEFAULT_PIECE_COLOURS: PieceColours = { home: COLORS.home, away: COLORS.away };
+
 export type PitchLook = {
   surface: string;
   lines: string;
@@ -74,7 +79,27 @@ export const PITCH_PRESETS: ({ name: string } & Omit<PitchLook, "overlays" | "ma
 ];
 
 /** A fresh scene is one setup step and nothing else — steps[0] never has moves. */
-export function newScene(kind: SceneKind, pitch: Partial<PitchLook> = {}): Scene {
+/** Only the players wear a kit; the ball and the props keep their own colour. */
+export function paintSides<T extends { kind: string; side: string; color: string }>(
+  tokens: T[],
+  colours: Partial<PieceColours> = {},
+): T[] {
+  return tokens.map((token) =>
+    token.kind !== "player"
+      ? token
+      : {
+          ...token,
+          color:
+            (token.side === "away" ? colours.away : colours.home) ?? token.color,
+        },
+  );
+}
+
+export function newScene(
+  kind: SceneKind,
+  pitch: Partial<PitchLook> = {},
+  colours: Partial<PieceColours> = {},
+): Scene {
   const seed = kind === "play" ? PLAY_SEED : TRAINING_SEED;
   const positions: Record<string, Vec> = {};
   for (const s of seed) positions[s.id] = { ...s.at };
@@ -83,7 +108,10 @@ export function newScene(kind: SceneKind, pitch: Partial<PitchLook> = {}): Scene
     schemaVersion: 1,
     kind,
     pitch: { width: 40, height: 20, variant: "full", ...DEFAULT_PITCH, ...pitch },
-    tokens: seed.map(({ id, kind: k, side, label, color }) => ({ id, kind: k, side, label, color })),
+    tokens: paintSides(
+      seed.map(({ id, kind: k, side, label, color }) => ({ id, kind: k, side, label, color })),
+      colours,
+    ),
     steps: [{ id: "setup", durationMs: 1000, moves: [], positions }],
     attachments: {},
   };

@@ -85,5 +85,32 @@ console.log("\n== lixo no template não parte nada ==");
   }
 }
 
+console.log("\n== o equipamento também vem das definições ==");
+{
+  const kit = { home: "#112233", away: "#445566" };
+
+  const fresh = newScene("play", {}, kit);
+  const sides = (s: ReturnType<typeof newScene>) => ({
+    home: [...new Set(s.tokens.filter((t) => t.kind === "player" && t.side === "home").map((t) => t.color))],
+    away: [...new Set(s.tokens.filter((t) => t.kind === "player" && t.side === "away").map((t) => t.color))],
+  });
+
+  check("uma cena nova veste as duas equipas", sides(fresh), { home: [kit.home], away: [kit.away] });
+  check("a bola não é uma equipa", fresh.tokens.find((t) => t.kind === "ball")?.color, "#ffffff");
+
+  // The template gives the shape; the settings give the look — the same rule the
+  // court follows, so there is one rule to remember rather than two.
+  const source = drawnPlay();
+  source.tokens = source.tokens.map((t) =>
+    t.kind === "player" ? { ...t, color: "#ff0000" } : t,
+  );
+  const fromTemplate = sceneFromTemplate(source, "play", {}, kit);
+  check("um template também é vestido", sides(fromTemplate), { home: [kit.home], away: [kit.away] });
+  check("e mantém as posições do template", fromTemplate.steps[0].positions.h4, { x: 31, y: 5 });
+
+  const noKit = sceneFromTemplate(source, "play");
+  check("sem preferência, fica o que o template trazia", noKit.tokens.find((t) => t.kind === "player")?.color, "#ff0000");
+}
+
 console.log(failures === 0 ? "\nTUDO PASSA\n" : `\n${failures} FALHA(S)\n`);
 process.exit(failures === 0 ? 0 : 1);

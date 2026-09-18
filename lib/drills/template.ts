@@ -1,4 +1,4 @@
-import { DEFAULT_PITCH, newScene, type PitchLook } from "@/lib/presets";
+import { DEFAULT_PITCH, newScene, paintSides, type PieceColours, type PitchLook } from "@/lib/presets";
 import { sceneSchema, type Scene, type SceneKind } from "@/lib/scene";
 
 /**
@@ -17,8 +17,9 @@ export function sceneFromTemplate(
   template: unknown,
   kind: SceneKind,
   pitch: Partial<PitchLook> = {},
+  colours: Partial<PieceColours> = {},
 ): Scene {
-  const fallback = newScene(kind, pitch);
+  const fallback = newScene(kind, pitch, colours);
   if (!template) return fallback;
 
   const parsed = sceneSchema.safeParse(template);
@@ -28,7 +29,10 @@ export function sceneFromTemplate(
   const setup = parsed.data.steps[0];
   return {
     ...parsed.data,
+    // Same rule as the court: the template gives the shape, the settings give
+    // the look. A club plays in the same kit whichever template it starts from.
     pitch: { ...parsed.data.pitch, ...DEFAULT_PITCH, ...pitch },
+    tokens: paintSides(parsed.data.tokens, colours),
     steps: [{ ...setup, id: "setup", moves: [], positions: { ...setup.positions } }],
   };
 }

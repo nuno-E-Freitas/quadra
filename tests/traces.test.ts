@@ -73,6 +73,16 @@ console.log("\n== sem idade, desenha-se como se fosse agora ==");
   check("um traço sem idade é o de agora", none, zero);
 }
 
+console.log("\n== a bola esbate como toda a gente ==");
+{
+  const ballNow = Math.max(...strengthOf([{ move: run("ball"), progress: 1, age: 0 }]));
+  const ballOld = Math.max(...strengthOf([{ move: run("ball"), progress: 1, age: 2 }]));
+  const manOld = Math.max(...strengthOf([{ move: run("h4"), progress: 1, age: 2 }]));
+
+  check("o trajeto da bola também recua com a idade", ballOld < ballNow, true);
+  check("e recua exatamente como o de um jogador", ballOld, manOld);
+}
+
 console.log("\n== focar uma peça manda as outras para trás ==");
 {
   // h3's trace is the live one, h4's is two beats old — and h4 is the one asked

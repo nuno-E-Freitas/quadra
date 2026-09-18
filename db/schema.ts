@@ -21,6 +21,8 @@ export type UserPreferences = {
     /** Hand-drawn court lines. Read back through the scene schema, never trusted. */
     marks?: unknown[];
   };
+  /** What the two sides wear, since a club plays in the same kit every week. */
+  pieces?: { home?: string; away?: string };
 };
 
 export const USER_ROLES = ["admin", "coach", "player"] as const;

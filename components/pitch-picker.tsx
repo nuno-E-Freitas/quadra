@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { BoardView } from "@/components/board/board-view";
 import { OVERLAY_LABEL } from "@/components/board/pitch";
-import { PITCH_PRESETS } from "@/lib/presets";
+import { PITCH_PRESETS, paintSides } from "@/lib/presets";
 import { PITCH_OVERLAYS, type PitchMark, type PitchOverlay, type Scene } from "@/lib/scene";
 import styles from "@/app/(app)/app.module.css";
 
@@ -16,16 +16,34 @@ type Look = {
   marks: PitchMark[];
 };
 
+type Kit = { home: string; away: string };
+
 /**
  * Three colours, the other sports painted on the same floor, and a court to see
  * them on. The preview is the point — picking a line colour against an unseen
  * surface is guesswork, and a pair that reads well on a laptop can vanish on a
  * phone in the sun.
  */
-export function PitchPicker({ scene, initial }: { scene: Scene; initial: Look }) {
+export function PitchPicker({
+  scene,
+  initial,
+  kit: initialKit,
+}: {
+  scene: Scene;
+  initial: Look;
+  kit: Kit;
+}) {
   const [look, setLook] = useState<Look>(initial);
+  const [kit, setKit] = useState<Kit>(initialKit);
 
-  const preview: Scene = { ...scene, pitch: { ...scene.pitch, ...look } };
+  // One board for both: a kit colour is chosen against the floor it will be
+  // seen on, and picking them in separate previews is how you end up with a
+  // team that vanishes into the court.
+  const preview: Scene = {
+    ...scene,
+    pitch: { ...scene.pitch, ...look },
+    tokens: paintSides(scene.tokens, kit),
+  };
   const set = (key: "surface" | "lines" | "surround") => (value: string) =>
     setLook((current) => ({ ...current, [key]: value }));
 
@@ -81,6 +99,21 @@ export function PitchPicker({ scene, initial }: { scene: Scene; initial: Look })
         <Swatch label="Piso" name="surface" value={look.surface} onChange={set("surface")} />
         <Swatch label="Linhas" name="lines" value={look.lines} onChange={set("lines")} />
         <Swatch label="Fora" name="surround" value={look.surround} onChange={set("surround")} />
+      </div>
+
+      <div className={styles.inline} style={{ marginBottom: 14 }}>
+        <Swatch
+          label="Nossa equipa"
+          name="home"
+          value={kit.home}
+          onChange={(v) => setKit((c) => ({ ...c, home: v }))}
+        />
+        <Swatch
+          label="Adversária"
+          name="away"
+          value={kit.away}
+          onChange={(v) => setKit((c) => ({ ...c, away: v }))}
+        />
       </div>
 
       <div>

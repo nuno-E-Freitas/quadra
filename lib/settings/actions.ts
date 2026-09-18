@@ -30,6 +30,9 @@ export async function savePitchPreference(formData: FormData) {
     // Checkboxes: absent entirely when none is ticked.
     overlays: formData.getAll("overlays").map(String),
   });
+  const kit = z
+    .object({ home: hexColour, away: hexColour })
+    .safeParse({ home: formData.get("home"), away: formData.get("away") });
   if (!parsed.success) redirect("/settings");
 
   // Merged rather than replaced, twice over: this column will hold more than the
@@ -39,7 +42,11 @@ export async function savePitchPreference(formData: FormData) {
   await db
     .update(users)
     .set({
-      preferences: { ...current, pitch: { ...(current.pitch ?? {}), ...parsed.data } },
+      preferences: {
+        ...current,
+        pitch: { ...(current.pitch ?? {}), ...parsed.data },
+        ...(kit.success ? { pieces: kit.data } : {}),
+      },
     })
     .where(eq(users.id, user.id));
 
