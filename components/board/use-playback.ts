@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { pointAtLength, sample, type Sampled } from "@/lib/geometry";
-import type { Scene, Vec } from "@/lib/scene";
+import type { Move, Scene, Vec } from "@/lib/scene";
 import type { DrawnMove } from "./board-view";
 
 /** 0.25x is for picking apart a rotation; 2x is for a quick recap. */
@@ -68,26 +68,41 @@ export function usePlayback(scene: Scene, opts?: { autoPlay?: boolean }) {
   const frameAt = useCallback(
     (ms: number): Frame => {
       const positions: Record<string, Vec> = { ...scene.steps[0].positions };
-      const moves: DrawnMove[] = [];
+      const drawn: { move: Move; progress: number; index: number }[] = [];
+      /** The beat the playhead is in; everything earlier is measured against it. */
+      let latest = 0;
 
       for (const seg of timeline.segments) {
         const step = scene.steps[seg.index];
         const raw = (ms - seg.start) / (seg.end - seg.start);
         if (raw <= 0) continue;
+        latest = seg.index;
 
         if (raw >= 1) {
           Object.assign(positions, step.positions);
-          step.moves.forEach((move) => moves.push({ move, progress: 1 }));
+          step.moves.forEach((move) => drawn.push({ move, progress: 1, index: seg.index }));
           continue;
         }
 
         const eased = easeInOutCubic(raw);
         step.moves.forEach((move, j) => {
-          moves.push({ move, progress: eased });
+          drawn.push({ move, progress: eased, index: seg.index });
           const s = sampled.get(`${seg.index}:${j}`);
           if (s) positions[move.tokenId] = pointAtLength(s, s.length * eased);
         });
       }
+
+      /**
+       * How many beats back each trace is. Six steps of lines at equal strength
+       * is six steps of noise — the eye has no way to tell what is happening now
+       * from what happened three beats ago, which is exactly when a play in a
+       * tight space stops being readable.
+       */
+      const moves: DrawnMove[] = drawn.map((d) => ({
+        move: d.move,
+        progress: d.progress,
+        age: latest - d.index,
+      }));
 
       return { positions, moves };
     },

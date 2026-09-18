@@ -86,6 +86,8 @@ export function Editor({ drill }: { drill: DrillProps }) {
   const [drawing, setDrawing] = useState(false);
   const [ink, setInk] = useState(PALETTE[3]);
   const [pitchSaved, setPitchSaved] = useState(false);
+  /** Reviewing only: tap a piece to keep just its trace at full strength. */
+  const [focusId, setFocusId] = useState<string | null>(null);
 
   const dirty = revision !== saved.revision || title !== saved.title;
   const touched = revision > 0 || title !== drill.title;
@@ -268,6 +270,7 @@ export function Editor({ drill }: { drill: DrillProps }) {
    * each mode carries only its own tools.
    */
   const go = (next: Mode) => {
+    setFocusId(null);
     if (next !== "rever") playback.reset();
     if (next === "gravar" && !recording) useEditor.getState().startRecording();
     if (next !== "gravar" && recording) useEditor.getState().stopRecording();
@@ -356,6 +359,10 @@ export function Editor({ drill }: { drill: DrillProps }) {
           selectedId={showingRun ? null : selectedId}
           draggingId={live?.id ?? null}
           interactive={movingPieces}
+          focusId={mode === "rever" ? focusId : null}
+          onTokenTap={
+            mode === "rever" ? (id) => setFocusId((current) => (current === id ? null : id)) : undefined
+          }
           onTokenPointerDown={onTokenPointerDown}
           onBackgroundPointerDown={onBackgroundPointerDown}
         />
@@ -375,7 +382,8 @@ export function Editor({ drill }: { drill: DrillProps }) {
           </>
         ) : (
           <>
-            <b>Rever.</b> É isto que os jogadores vão ver. O quadro não se edita aqui — passa a{" "}
+            <b>Rever.</b> É isto que os jogadores vão ver. Toca numa peça para veres só o trajeto
+            dela; os momentos anteriores vão esbatendo sozinhos. O quadro não se edita aqui — passa a{" "}
             <b>Montar</b> ou <b>Gravar</b> para lhe mexer.
           </>
         )}

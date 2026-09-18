@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Scene } from "@/lib/scene";
 import { BoardView } from "./board-view";
 import { SPEEDS, usePlayback } from "./use-playback";
@@ -16,6 +16,17 @@ export function Player({ scene, title }: { scene: Scene; title: string }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const step = playback.activeStep > 0 ? scene.steps[playback.activeStep] : null;
 
+  /**
+   * The question someone opens this link with is "where do I go", not "what did
+   * the team do". Tapping a piece answers that one: their path stays, the rest
+   * drops back far enough to stop competing.
+   */
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const focused = useMemo(
+    () => scene.tokens.find((t) => t.id === focusId) ?? null,
+    [scene.tokens, focusId],
+  );
+
   useEffect(() => {
     document.title = `${title} · Quadra`;
   }, [title]);
@@ -28,6 +39,9 @@ export function Player({ scene, title }: { scene: Scene; title: string }) {
           scene={scene}
           positions={playback.frame.positions}
           moves={playback.frame.moves}
+          focusId={focusId}
+          onTokenTap={(id) => setFocusId((current) => (current === id ? null : id))}
+          onBackgroundPointerDown={() => setFocusId(null)}
         />
       </div>
 
@@ -75,14 +89,36 @@ export function Player({ scene, title }: { scene: Scene; title: string }) {
               ))}
             </div>
           </div>
+
           <p className={styles.hint}>
-            {step?.note ? (
+            {focused ? (
+              <>
+                <b>
+                  Só{" "}
+                  {focused.kind === "player"
+                    ? `o ${focused.label || "jogador"}`
+                    : focused.kind === "ball"
+                      ? "a bola"
+                      : "esta peça"}
+                  .
+                </b>{" "}
+                <button
+                  className={styles.seg}
+                  type="button"
+                  onClick={() => setFocusId(null)}
+                  style={{ cursor: "pointer" }}
+                >
+                  ver todos
+                </button>
+              </>
+            ) : step?.note ? (
               <>
                 <b>Passo {playback.activeStep}.</b> {step.note}
               </>
             ) : (
               <>
-                {scene.steps.length - 1} passo{scene.steps.length === 2 ? "" : "s"} · toca em ver para repetir
+                {scene.steps.length - 1} passo{scene.steps.length === 2 ? "" : "s"} · toca num jogador
+                para veres só o trajeto dele
               </>
             )}
           </p>

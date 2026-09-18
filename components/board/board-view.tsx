@@ -5,7 +5,20 @@ import { MOVE_STYLE, curvePath, headAt, sample, subPath } from "@/lib/geometry";
 import type { Move, Scene, Token, Vec } from "@/lib/scene";
 import { PitchBackground } from "./pitch";
 
-export type DrawnMove = { move: Move; progress: number };
+export type DrawnMove = {
+  move: Move;
+  progress: number;
+  /** Beats since this trace was the live one. 0 is now. */
+  age?: number;
+};
+
+/**
+ * What a trace keeps as it recedes. Nothing is removed — an older path still
+ * says where the ball came from — it just stops competing with the one being
+ * drawn. Anything three beats back is a whisper.
+ */
+const AGE_FADE = [1, 0.45, 0.18];
+const fadeFor = (age = 0) => AGE_FADE[Math.min(Math.max(age, 0), AGE_FADE.length - 1)];
 
 type Props = {
   scene: Scene;
@@ -13,6 +26,13 @@ type Props = {
   positions: Record<string, Vec>;
   /** Traces to draw, each with how far along it has been revealed. */
   moves?: DrawnMove[];
+  /**
+   * When set, only this token's trace stays at full strength. A player opening
+   * the link is asking "where do I go", not "what did the team do".
+   */
+  focusId?: string | null;
+  /** Selecting without dragging — the read-only board uses this. */
+  onTokenTap?: (id: string) => void;
   /** The path being dragged this instant, before it becomes a Move. */
   live?: { points: Vec[]; color: string } | null;
   selectedId?: string | null;
@@ -27,6 +47,8 @@ export const BoardView = forwardRef<SVGSVGElement, Props>(function BoardView(
     scene,
     positions,
     moves = [],
+    focusId = null,
+    onTokenTap,
     live,
     selectedId = null,
     draggingId = null,
@@ -53,7 +75,13 @@ export const BoardView = forwardRef<SVGSVGElement, Props>(function BoardView(
 
       <g>
         {moves.map((drawn, i) => (
-          <Trace key={`${drawn.move.tokenId}-${i}`} drawn={drawn} token={byId.get(drawn.move.tokenId)} />
+          <Trace
+            key={`${drawn.move.tokenId}-${i}`}
+            drawn={drawn}
+            token={byId.get(drawn.move.tokenId)}
+            dimmed={focusId !== null && drawn.move.tokenId !== focusId}
+            focused={focusId !== null && drawn.move.tokenId === focusId}
+          />
         ))}
       </g>
 
@@ -88,10 +116,11 @@ export const BoardView = forwardRef<SVGSVGElement, Props>(function BoardView(
               key={token.id}
               token={token}
               at={at}
-              selected={selectedId === token.id}
+              selected={selectedId === token.id || focusId === token.id}
               dragging={draggingId === token.id}
               interactive={interactive}
               onPointerDown={onTokenPointerDown}
+              onTap={onTokenTap}
             />
           );
         })}
@@ -100,8 +129,24 @@ export const BoardView = forwardRef<SVGSVGElement, Props>(function BoardView(
   );
 });
 
-function Trace({ drawn, token }: { drawn: DrawnMove; token?: Token }) {
+function Trace({
+  drawn,
+  token,
+  dimmed,
+  focused,
+}: {
+  drawn: DrawnMove;
+  token?: Token;
+  dimmed?: boolean;
+  focused?: boolean;
+}) {
   const { move, progress } = drawn;
+  /**
+   * Focus outranks age. Asking for one player's path and being shown a ghost of
+   * it, because the movement happened three beats ago, answers nothing — the
+   * whole point of tapping was to follow that player through the play.
+   */
+  const fade = dimmed ? 0.1 : focused ? 1 : fadeFor(drawn.age);
   const style = MOVE_STYLE[move.kind];
   const color = token?.kind === "ball" ? "#ffffff" : (token?.color ?? "#ffffff");
 
@@ -115,13 +160,20 @@ function Trace({ drawn, token }: { drawn: DrawnMove; token?: Token }) {
 
   return (
     <g>
-      <path d={d} fill="none" stroke={color} strokeWidth={style.width * 4.2} strokeOpacity="0.13" strokeLinecap="round" />
+      <path
+        d={d}
+        fill="none"
+        stroke={color}
+        strokeWidth={style.width * 4.2}
+        strokeOpacity={0.13 * fade}
+        strokeLinecap="round"
+      />
       <path
         d={d}
         fill="none"
         stroke={color}
         strokeWidth={style.width}
-        strokeOpacity="0.92"
+        strokeOpacity={0.92 * fade}
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeDasharray={style.dash || undefined}
@@ -130,7 +182,7 @@ function Trace({ drawn, token }: { drawn: DrawnMove; token?: Token }) {
         <polygon
           points="0,0 -0.95,0.5 -0.95,-0.5"
           fill={color}
-          fillOpacity="0.92"
+          fillOpacity={0.92 * fade}
           transform={`translate(${head.x.toFixed(2)},${head.y.toFixed(2)}) rotate(${head.angle.toFixed(1)}) scale(${style.head})`}
         />
       ) : null}
@@ -142,6 +194,7 @@ function Trace({ drawn, token }: { drawn: DrawnMove; token?: Token }) {
           y2="0.7"
           stroke={color}
           strokeWidth="0.26"
+          strokeOpacity={fade}
           strokeLinecap="round"
           transform={`translate(${head.x.toFixed(2)},${head.y.toFixed(2)}) rotate(${head.angle.toFixed(1)})`}
         />
@@ -157,6 +210,7 @@ function TokenMark({
   dragging,
   interactive,
   onPointerDown,
+  onTap,
 }: {
   token: Token;
   at: Vec;
@@ -164,16 +218,25 @@ function TokenMark({
   dragging: boolean;
   interactive: boolean;
   onPointerDown?: (id: string, event: React.PointerEvent<SVGGElement>) => void;
+  onTap?: (id: string) => void;
 }) {
   const common = {
     transform: `translate(${at.x.toFixed(2)},${at.y.toFixed(2)})`,
     style: {
-      cursor: interactive ? (dragging ? "grabbing" : "grab") : "default",
+      cursor: interactive ? (dragging ? "grabbing" : "grab") : onTap ? "pointer" : "default",
       // Otherwise a piece eats the pointer that was meant for the court beneath
-      // it — which is exactly what drawing on the pitch needs to reach.
-      pointerEvents: interactive ? undefined : ("none" as const),
+      // it — which is exactly what drawing on the pitch needs to reach. A board
+      // that only listens for taps still has to hear them.
+      pointerEvents: interactive || onTap ? undefined : ("none" as const),
     } as const,
-    onPointerDown: interactive ? (e: React.PointerEvent<SVGGElement>) => onPointerDown?.(token.id, e) : undefined,
+    onPointerDown: interactive
+      ? (e: React.PointerEvent<SVGGElement>) => onPointerDown?.(token.id, e)
+      : onTap
+        ? (e: React.PointerEvent<SVGGElement>) => {
+            e.stopPropagation();
+            onTap(token.id);
+          }
+        : undefined,
   };
 
   if (token.kind === "ball") {
