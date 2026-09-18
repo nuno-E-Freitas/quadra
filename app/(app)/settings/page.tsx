@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ConfirmButton } from "@/components/confirm-button";
+import { PasswordForm } from "@/components/password-form";
 import { PitchPicker } from "@/components/pitch-picker";
 import { requireCoach } from "@/lib/auth/session";
 import {
@@ -161,6 +162,11 @@ export default async function SettingsPage() {
             guardam-se aqui com <b>Guardar como campo padrão</b>.
           </p>
         </form>
+      </section>
+
+      <section className={styles.section}>
+        <h2>Palavra-passe</h2>
+        <PasswordForm />
       </section>
 
       <p style={{ marginTop: 28 }}>

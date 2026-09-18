@@ -3,6 +3,8 @@ import { asc, count, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { drills, teams, users, USER_ROLES } from "@/db/schema";
 import { ConfirmButton } from "@/components/confirm-button";
+import { ResetLink } from "@/components/reset-link";
+import { siteOrigin } from "@/lib/origin";
 import { requireAdmin } from "@/lib/auth/session";
 import { deleteUser, setUserDisabled, setUserRole } from "@/lib/admin/actions";
 import styles from "../../app.module.css";
@@ -30,6 +32,7 @@ function removalWarning(name: string, drills: number, teams: number) {
 
 export default async function AdminUsersPage() {
   const admin = await requireAdmin();
+  const origin = await siteOrigin();
 
   const rows = await db
     .select({
@@ -107,6 +110,8 @@ export default async function AdminUsersPage() {
                   </button>
                 </form>
 
+                {self ? null : <ResetLink userId={row.id} name={row.name} origin={origin} />}
+
                 {self ? null : (
                   <form action={deleteUser}>
                     <input type="hidden" name="userId" value={row.id} />
@@ -123,7 +128,9 @@ export default async function AdminUsersPage() {
 
       <p className={styles.meta} style={{ marginTop: 20, textTransform: "none", letterSpacing: 0 }}>
         Contas novas chegam desativadas: qualquer pessoa pode pedir conta em /signup, mas é aqui que
-        se decide quem passa a poder entrar. Desativar tira o acesso e guarda tudo; Remover apaga a
+        se decide quem passa a poder entrar. <b>Repor palavra-passe</b> gera um link de uso único,
+        válido dois dias, para dares a quem não consegue entrar — não há email nesta aplicação, por
+        isso o link passa por ti. Desativar tira o acesso e guarda tudo; Remover apaga a
         pessoa e o trabalho dela, incluindo as equipas que criou. Não podes mudar o teu próprio
         papel, desativar-te nem remover-te — é isso que impede o último administrador de trancar
         toda a gente fora.

@@ -170,6 +170,29 @@ export const memberships = pgTable(
 );
 
 /**
+ * A one-time link that lets someone set a new password.
+ *
+ * Same shape as a session: the row holds only the SHA-256, so a leak of this
+ * table hands nobody a working link. There is no email in this app — an
+ * administrator issues the link and passes it on, which is the same trust
+ * already needed to approve the account in the first place.
+ */
+export const passwordResets = pgTable(
+  "password_resets",
+  {
+    id: text().primaryKey(),
+    userId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp({ withTimezone: true }).notNull(),
+    /** Set on use, so a link that was already spent cannot be spent again. */
+    usedAt: timestamp({ withTimezone: true }),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("password_resets_user_idx").on(t.userId)],
+);
+
+/**
  * A join link, reusable until it expires — a coach pastes one code into the
  * squad's group chat rather than inviting fifteen people one at a time.
  */
