@@ -259,6 +259,35 @@ export const trainingSessions = pgTable(
   ],
 );
 
+export const ATTENDANCE = ["vou", "duvida", "nao"] as const;
+export type Attendance = (typeof ATTENDANCE)[number];
+
+/**
+ * Who is coming on Tuesday.
+ *
+ * The weekly question of every amateur squad, and the one that decides what can
+ * even be trained — there is no 4v4 with six people. It hangs off the training
+ * rather than off a date of its own, so answering is the same act as opening the
+ * link the coach already sends.
+ */
+export const attendance = pgTable(
+  "attendance",
+  {
+    sessionId: uuid()
+      .notNull()
+      .references(() => trainingSessions.id, { onDelete: "cascade" }),
+    userId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text({ enum: ATTENDANCE }).notNull(),
+    respondedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.sessionId, t.userId] }),
+    index("attendance_session_idx").on(t.sessionId),
+  ],
+);
+
 export const trainingSessionItems = pgTable(
   "training_session_items",
   {

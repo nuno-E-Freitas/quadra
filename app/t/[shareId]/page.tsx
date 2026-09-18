@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BoardView } from "@/components/board/board-view";
+import { AttendanceAsk } from "@/components/attendance";
 import { Wordmark } from "@/components/wordmark";
+import { getCurrentUser } from "@/lib/auth/session";
+import { getMyAnswer } from "@/lib/trainings/attendance";
 import { sceneSchema } from "@/lib/scene";
 import { getTrainingByShareId } from "@/lib/trainings/queries";
 import shell from "@/app/b/[shareId]/share.module.css";
@@ -36,6 +39,9 @@ export default async function TrainingSharePage({
   const training = await getTrainingByShareId(shareId);
   if (!training) notFound();
 
+  const viewer = await getCurrentUser();
+  const mine = viewer ? await getMyAnswer(training.id, viewer.id) : null;
+
   return (
     <main className={shell.shell}>
       <header className={shell.head}>
@@ -54,6 +60,13 @@ export default async function TrainingSharePage({
         ) : null}
         {training.description ? <p className={styles.intro}>{training.description}</p> : null}
       </header>
+
+      <AttendanceAsk
+        sessionId={training.id}
+        shareId={shareId}
+        mine={mine}
+        signedIn={Boolean(viewer)}
+      />
 
       {training.items.length === 0 ? (
         <p className={styles.intro}>O teu treinador ainda não juntou nada a esta sessão.</p>

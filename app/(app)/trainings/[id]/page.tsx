@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ConfirmButton } from "@/components/confirm-button";
+import { AttendanceList } from "@/components/attendance";
+import { ShareMessage } from "@/components/share-message";
 import { requireCoach } from "@/lib/auth/session";
+import { getAttendance } from "@/lib/trainings/attendance";
 import { siteOrigin } from "@/lib/origin";
 import { getMyTeams } from "@/lib/teams/queries";
 import {
@@ -40,12 +43,13 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
   const user = await requireCoach();
   await requireOwnedTraining(id);
 
-  const [training, items, addable, teams, origin] = await Promise.all([
+  const [training, items, addable, teams, origin, presences] = await Promise.all([
     getTraining(id),
     getTrainingItems(id),
     getAddableDrills(user.id, id),
     getMyTeams(user.id),
     siteOrigin(),
+    getAttendance(id),
   ]);
 
   const link = origin + "/t/" + training.shareId;
@@ -69,13 +73,32 @@ export default async function TrainingPage({ params }: { params: Promise<{ id: s
       </div>
 
       <section className={styles.section}>
-        <h2>O link que envias</h2>
-        <div className={styles.row}>
+        <h2>O que envias ao grupo</h2>
+        <ShareMessage
+          title={training.title}
+          link={link}
+          scheduledFor={
+            training.scheduledFor
+              ? training.scheduledFor.toLocaleDateString("pt-PT", {
+                  weekday: "long",
+                  day: "2-digit",
+                  month: "long",
+                })
+              : null
+          }
+          description={training.description}
+        />
+        <div className={styles.row} style={{ marginTop: 10 }}>
           <span className={styles.code + " " + styles.rowMain}>{link}</span>
           <Link className="btn" href={"/t/" + training.shareId}>
             Abrir
           </Link>
         </div>
+      </section>
+
+      <section className={styles.section}>
+        <h2>Quem vem</h2>
+        <AttendanceList data={presences} />
       </section>
 
       <section className={styles.section}>
